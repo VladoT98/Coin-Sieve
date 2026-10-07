@@ -1,0 +1,42 @@
+# Coin Sieve configuration. All thresholds live here.
+# Filter values below are STARTING GUESSES — tune them from logs/evaluations-*.jsonl.
+
+chain: solana
+
+discovery:
+  # DexScreener feeds polled each run. Each returns only the latest ~30 entries,
+  # so addresses are accumulated in the local store across runs.
+  sources:
+    - token-profiles/latest/v1
+    - token-boosts/latest/v1
+    - token-boosts/top/v1
+    - community-takeovers/latest/v1
+
+age:
+  # Age = hours since the token's earliest pair (the bonding-curve pair for launchpad tokens).
+  min_hours: 6
+  max_hours: 48
+
+filters:
+  # Metrics come from DexScreener's main pair for the token (tokens/v1 endpoint).
+  min_liquidity_usd: 20000   # liquidity.usd (both sides of the pool, in USD)
+  min_volume_h24_usd: 50000  # volume.h24
+  min_txns_h24: 300          # txns.h24.buys + txns.h24.sells
+  min_socials: 1             # entries in info.socials (twitter/telegram/...)
+
+launchpad:
+  # dexIds seen in live data as pre-migration bonding curves (they have no `liquidity` field).
+  # A token whose main pair is on one of these has not migrated to an AMM pool -> rejected.
+  bonding_curve_dex_ids:
+    - pumpfun
+    - meteoradbc
+
+api:
+  dexscreener_base: https://api.dexscreener.com
+  timeout_s: 20
+  min_interval_s: 0.25   # pair endpoints allow 300 req/min; feeds 60 req/min
+  retries: 3
+
+storage:
+  db_path: data/coinsieve.db
+  log_dir: logs
