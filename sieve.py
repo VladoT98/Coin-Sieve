@@ -17,6 +17,7 @@ import yaml
 from coinsieve.dexscreener import DexScreener
 from coinsieve.evallog import EvalLog
 from coinsieve.filters import evaluate, pair_metrics
+from coinsieve.rugcheck import RugCheck, evaluate_report
 from coinsieve.store import Store
 
 log = logging.getLogger("sieve")
@@ -72,7 +73,8 @@ def run(cfg, post):
     min_s, max_s = age["min_hours"] * 3600, age["max_hours"] * 3600
     bonding_ids = set(cfg["launchpad"]["bonding_curve_dex_ids"])
 
-    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["min_interval_s"], api["retries"])
+    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
+    rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
     store = Store(cfg["storage"]["db_path"])
     evlog = EvalLog(cfg["storage"]["log_dir"], run_id)
 
@@ -106,8 +108,16 @@ def run(cfg, post):
             in_window.append(row)
     store.commit()
 
-    # Hard filters on main-pair data for tokens inside the age window.
+    # Hard filters on main-pair data, then RugCheck only for tokens that pass them.
     pairs = dex.main_pairs(chain, [r["address"] for r in in_window])
+    if in_window and not pairs:
+        # Seen live: DexScreener answering 200 with empty data for every token (even BONK).
+        # Don't log that as real rejections; tokens are re-evaluated next run.
+        log.error("tokens/v1 returned no pairs for any of %d tokens - treating as API outage", len(in_window))
+        print(f"\nDexScreener returned no data for all {len(in_window)} in-window tokens "
+              "(likely outage). Evaluation skipped; nothing logged as rejected.")
+        store.close()
+        return
     results = []
     for row in in_window:
         addr, pair = row["address"], pairs.get(row["address"])
@@ -116,6 +126,14 @@ def run(cfg, post):
         else:
             metrics = pair_metrics(pair, row["launch_ts"], now, bonding_ids)
             reasons = evaluate(metrics, cfg["filters"])
+        metrics["passed_hard_filters"] = not reasons
+        if not reasons:
+            try:
+                rc_metrics, reasons = evaluate_report(rug.report(addr), cfg["rugcheck"])
+                metrics.update(rc_metrics)
+            except Exception as e:
+                log.warning("rugcheck %s failed: %s", addr, e)
+                reasons = [f"rugcheck_failed: {e}"]
         evlog.write(addr, reasons, metrics)
         store.mark_checked(addr, now)
         results.append((metrics, reasons))
@@ -131,18 +149,22 @@ def fmt_usd(v):
 
 
 def report(run_id, new, counts, results, cfg):
-    # passes first, then by 24h volume
-    results = sorted(results, key=lambda x: (bool(x[1]), -(x[0].get("volume_h24_usd") or 0)))
+    # passes first, then RugCheck rejects, then hard-filter rejects; each by 24h volume
+    results = sorted(results, key=lambda x: (bool(x[1]), not x[0].get("passed_hard_filters"),
+                                             -(x[0].get("volume_h24_usd") or 0)))
     passed = [m for m, r in results if not r]
+    hard_passed = sum(1 for m, _ in results if m.get("passed_hard_filters"))
     print(f"\nCoin Sieve run {run_id} (dry run)")
     print(f"  new tokens discovered: {new}")
     print(f"  waiting (<{cfg['age']['min_hours']}h): {counts['waiting_too_young']}"
           f" | no pair data yet: {counts['no_pair_data_yet']}"
           f" | newly too old (>{cfg['age']['max_hours']}h): {counts['too_old']}")
-    print(f"  in age window: {len(results)} | passed hard filters: {len(passed)}\n")
+    print(f"  in age window: {len(results)} | passed hard filters: {hard_passed}"
+          f" | passed RugCheck: {len(passed)}\n")
 
     if results:
-        hdr = f"{'SYMBOL':<12}{'AGE_H':>6}{'LIQ_USD':>11}{'VOL24_USD':>12}{'TXNS24':>8}  {'DEX':<11}{'SOC':>4}  RESULT"
+        hdr = (f"{'SYMBOL':<12}{'AGE_H':>6}{'LIQ_USD':>11}{'VOL24_USD':>12}{'TXNS24':>8}  {'DEX':<11}"
+               f"{'SOC':>4}{'LOCK%':>7}{'TOP10%':>7}  RESULT")
         print(hdr)
         print("-" * len(hdr))
         for m, reasons in results:
@@ -150,9 +172,11 @@ def report(run_id, new, counts, results, cfg):
                 print(f"{m['address'][:12]:<12}  {reasons[0]}")
                 continue
             verdict = "PASS" if not reasons else "; ".join(r.split(":")[0] for r in reasons)
+            lock, top10 = m.get("rc_lp_locked_pct"), m.get("rc_top10_holders_pct")
             print(f"{(m['symbol'] or '?')[:11]:<12}{m['age_h']:>6.1f}{fmt_usd(m['liquidity_usd']):>11}"
                   f"{fmt_usd(m['volume_h24_usd']):>12}{m['txns_h24']:>8}  {(m['dex_id'] or '?')[:10]:<11}"
-                  f"{len(m['socials']):>4}  {verdict}")
+                  f"{len(m['socials']):>4}{'-' if lock is None else lock:>7}{'-' if top10 is None else top10:>7}"
+                  f"  {verdict}")
 
         tally = Counter(r.split(":")[0] for _, reasons in results for r in reasons)
         if tally:

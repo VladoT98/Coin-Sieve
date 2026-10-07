@@ -34,3 +34,12 @@ Stop after each stage and wait for review.
 - Bonding-curve dexIds seen: `pumpfun`, `meteoradbc` — they have no `liquidity` key. Migrated pump.fun tokens trade on `pumpswap`.
 - Some pairs have no `liquidity`/`marketCap` and volume 0 even when not on a bonding curve (DexScreener can't price them) → rejected as `no_liquidity_data`.
 - Tickers collide (two different "UP" tokens seen) → always identify tokens by address.
+- Outage mode seen 2026-10-07: pair endpoints answer HTTP 200 with `[]` for every token (even BONK) while feeds still work. sieve.py skips evaluation when no in-window token gets pair data.
+
+## Verified API facts (RugCheck, 2026-10-07, 51 reports)
+- `GET /v1/tokens/{mint}/report` — no key. Header `X-Rate-Limit-Limit: 15`; 1 req/s gave no 429s. Bulk endpoints need auth.
+- `mintAuthority` / `freezeAuthority` top-level, null = revoked (all pump.fun tokens are revoked).
+- `risks[]`: {name, value, description, score, level}; levels seen: `warn`, `danger`. Danger names seen: Low Liquidity, Creator history of rugged tokens.
+- `markets[].lp.lpLockedPct/lpLockedUSD/baseUSD/quoteUSD`. pump_fun (curve) and pump_fun_amm report 100% locked; third-party Meteora/Orca pools report 0% → locked share computed across ALL markets.
+- `topHolders[]` includes pool vaults (4–96%). Excluded via market pubkey, `liquidityA/B` (vault addresses), `liquidityA/BAccount.owner`, or `knownAccounts` type AMM. Unidentified holders count.
+- Data can be inconsistent (one token's top-10 summed to 115%).

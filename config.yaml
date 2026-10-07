@@ -31,11 +31,20 @@ launchpad:
     - pumpfun
     - meteoradbc
 
+rugcheck:
+  # Only tokens that pass the hard filters are checked. A failed/incomplete report = reject.
+  min_lp_locked_pct: 95        # locked/burned LP USD as % of liquidity across ALL markets
+  max_top1_holder_pct: 10      # largest non-pool holder, % of supply
+  max_top10_holders_pct: 30    # top 10 non-pool holders combined
+  reject_risk_levels: [danger] # levels seen live: warn, danger
+
 api:
-  dexscreener_base: https://api.dexscreener.com
   timeout_s: 20
-  min_interval_s: 0.25   # pair endpoints allow 300 req/min; feeds 60 req/min
   retries: 3
+  dexscreener_base: https://api.dexscreener.com
+  dexscreener_min_interval_s: 0.25   # pair endpoints allow 300 req/min; feeds 60 req/min
+  rugcheck_base: https://api.rugcheck.xyz/v1
+  rugcheck_min_interval_s: 1.0       # header X-Rate-Limit-Limit: 15; 1/s gave no 429s
 
 storage:
   db_path: data/coinsieve.db
