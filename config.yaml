@@ -38,6 +38,20 @@ rugcheck:
   max_top10_holders_pct: 30    # top 10 non-pool holders combined
   reject_risk_levels: [danger] # levels seen live: warn, danger
 
+ranking:
+  # Applied to tokens that passed hard filters + RugCheck in the CURRENT run.
+  min_vol_liq_ratio: 0.5          # volume.h24 / liquidity.usd; live passers ranged 12-50
+  max_vol_liq_ratio: 60
+  holder_growth_window_hours: 6   # growth = holders gained per hour across snapshots in this window
+  min_history_hours: 1.0          # need RugCheck snapshots spanning >= this before a token is postable
+  min_holder_growth_per_hour: 0   # declining holder count -> not posted
+
+posting:
+  max_posts_per_day: 5            # UTC day, counted from the posts table
+  post_zero_summary: false        # send one "0 passed" line when nothing is postable (max once/day)
+  banned_words: [safe, gem, verified, buy]   # substring match on post prose; hit = token skipped
+  disclaimer: "Not financial advice. Passing the filter is not a recommendation."
+
 api:
   timeout_s: 20
   retries: 3
