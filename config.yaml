@@ -3,6 +3,14 @@
 
 chain: solana
 
+# Tier membership. Sections below (discovery..posting) configure the New Launches pipeline.
+tiers:
+  new_launches:
+    leave_after_hours: 2    # a member must fail continuously this long before a "left" event
+graduation:                 # "graduated" event when a token enters `to` after being in `from`
+  from: new_launches
+  to: emerging
+
 discovery:
   # DexScreener feeds polled each run. Each returns only the latest ~30 entries,
   # so addresses are accumulated in the local store across runs.

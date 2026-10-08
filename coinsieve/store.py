@@ -29,6 +29,27 @@ CREATE TABLE IF NOT EXISTS posts (
     message_id INTEGER,
     PRIMARY KEY (address, chat)
 );
+-- Tier membership history. A row with left_at NULL is a current member; re-entry adds a new row.
+CREATE TABLE IF NOT EXISTS tier_members (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    address      TEXT NOT NULL,
+    tier         TEXT NOT NULL,
+    symbol       TEXT,
+    entered_at   REAL NOT NULL,
+    last_pass_at REAL NOT NULL,
+    left_at      REAL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tier_members_current
+    ON tier_members (address, tier) WHERE left_at IS NULL;
+CREATE TABLE IF NOT EXISTS tier_events (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts      REAL NOT NULL,
+    address TEXT NOT NULL,
+    tier    TEXT NOT NULL,
+    kind    TEXT NOT NULL,                   -- entered | left | graduated
+    symbol  TEXT,
+    detail  TEXT
+);
 CREATE TABLE IF NOT EXISTS zero_notices (
     day       TEXT NOT NULL,                 -- UTC date; at most one "0 passed" per day per chat
     chat      TEXT NOT NULL,
@@ -122,6 +143,36 @@ class Store:
 
     def add_zero_notice(self, day, chat, now):
         self.db.execute("INSERT INTO zero_notices (day, chat, posted_at) VALUES (?, ?, ?)", (day, chat, now))
+
+    # --- tiers ---
+    def current_members(self, tier):
+        return {r["address"]: r for r in self.db.execute(
+            "SELECT * FROM tier_members WHERE tier = ? AND left_at IS NULL", (tier,))}
+
+    def was_ever_member(self, address, tier):
+        return self.db.execute("SELECT 1 FROM tier_members WHERE address = ? AND tier = ?",
+                               (address, tier)).fetchone() is not None
+
+    def add_member(self, address, tier, symbol, now):
+        self.db.execute("INSERT INTO tier_members (address, tier, symbol, entered_at, last_pass_at) "
+                        "VALUES (?, ?, ?, ?, ?)", (address, tier, symbol, now, now))
+
+    def touch_member(self, member_id, symbol, now):
+        self.db.execute("UPDATE tier_members SET last_pass_at = ?, symbol = COALESCE(?, symbol) WHERE id = ?",
+                        (now, symbol, member_id))
+
+    def close_member(self, member_id, now):
+        self.db.execute("UPDATE tier_members SET left_at = ? WHERE id = ?", (now, member_id))
+
+    def add_event(self, now, address, tier, kind, symbol, detail=None):
+        self.db.execute("INSERT INTO tier_events (ts, address, tier, kind, symbol, detail) "
+                        "VALUES (?, ?, ?, ?, ?, ?)", (now, address, tier, kind, symbol, detail))
+
+    def events_since(self, since, tier=None):
+        sql, args = "SELECT * FROM tier_events WHERE ts >= ?", [since]
+        if tier:
+            sql, args = sql + " AND tier = ?", args + [tier]
+        return self.db.execute(sql + " ORDER BY ts, id", args).fetchall()
 
     def commit(self):
         self.db.commit()

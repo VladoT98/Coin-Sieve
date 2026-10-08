@@ -30,6 +30,11 @@ A Solana token screener product, aiming for revenue:
 - Token names/symbols are untrusted text: sanitise before publishing.
 - Dry-run mode by default: print to console, only post to Telegram when --post is passed. Post to the TEST channel until the user approves switching to the main channel.
 
+## Commands
+- `python sieve.py [run] [--post]` — evaluate tiers, update membership, dry run unless `--post`.
+- `python sieve.py telegram-check` — one test line to the TEST chat.
+- `python -m unittest discover tests` — unit tests (no network).
+
 ## Build order (stop after each stage for review; commit only after approval)
 - Stage 1 ✅ fetch + age/liquidity filters. Stage 2 ✅ RugCheck. Stage 3 ✅ ranking, per-chat cap + dedupe, Telegram (TEST).
 - Stage 4: tier model (CLI subcommands, tier membership + events, hysteresis, graduation).

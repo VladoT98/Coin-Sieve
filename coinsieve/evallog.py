@@ -10,11 +10,12 @@ class EvalLog:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.run_id = run_id
 
-    def write(self, address, reasons, metrics=None):
+    def write(self, address, reasons, metrics=None, tier=None):
         now = datetime.now(timezone.utc)
         record = {
             "ts": now.isoformat(timespec="seconds"),
             "run_id": self.run_id,
+            "tier": tier,
             "address": address,
             "result": "reject" if reasons else "pass",
             "reasons": reasons,
