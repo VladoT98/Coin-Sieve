@@ -8,11 +8,12 @@ log = logging.getLogger(__name__)
 
 
 class ThrottledClient:
-    def __init__(self, base_url, timeout_s, min_interval_s, retries):
+    def __init__(self, base_url, timeout_s, min_interval_s, retries, backoff_s=2):
         self.base = base_url.rstrip("/")
         self.timeout = timeout_s
         self.min_interval = min_interval_s
         self.retries = retries
+        self.backoff_s = backoff_s  # wait backoff_s * attempt after a failure
         self._last_call = 0.0
         self.session = requests.Session()
 
@@ -38,5 +39,5 @@ class ThrottledClient:
                         err = e
             log.warning("GET %s failed (attempt %d/%d): %s", path, attempt, self.retries, err)
             if attempt < self.retries:
-                time.sleep(2 ** attempt)
+                time.sleep(self.backoff_s * attempt)
         raise RuntimeError(f"GET {path} failed after {self.retries} attempts")

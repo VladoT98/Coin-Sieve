@@ -1,21 +1,21 @@
-"""Telegram digest texts: daily New Launches, weekly tier changes, Established alerts.
+"""Telegram digest texts (HTML parse mode): daily card caption, weekly tier changes, Established alerts.
 
-Plain text (no parse_mode). Every text: neutral facts, site link (if configured), disclaimer.
-Banned/blocked words are checked on prose only — addresses/URLs are base58/random and can
+Style: neutral facts, calm emojis as section markers only (no 🚀/💎/🔥 — hype, and 💎 = "gem"),
+token names as links, contract addresses in <code> (tap-to-copy), disclaimer last.
+Banned words are checked on the readable prose only: addresses/URLs are random base58 and can
 contain e.g. "gem" by chance.
 """
+import html
+import re
 from datetime import datetime, timezone
 
+from coinsieve.card import compact_usd
 from coinsieve.sanitize import clean_text, word_hits
 
-TG_LIMIT = 4096
+CAPTION_LIMIT = 1024   # Telegram photo caption
+TG_LIMIT = 4096        # Telegram message
 TIER_LABEL = {"new_launches": "New Launches", "emerging": "Emerging", "established": "Established"}
-
-
-def fmt_usd(v):
-    if v is None:
-        return "n/a"
-    return f"${v / 1e6:,.2f}M" if v >= 1e6 else f"${v:,.0f}"
+TIER_EMOJI = {"new_launches": "🆕", "emerging": "🌱", "established": "🏛"}
 
 
 def _date(ts):
@@ -35,96 +35,122 @@ def blocked_reason(m, pub):
     return f"blocked_name: {', '.join(hits)}" if hits else None
 
 
+def readable(html_text):
+    """Prose a reader sees, minus addresses (<code>) and link targets — for the banned-word check."""
+    s = re.sub(r"<code>.*?</code>", "", html_text, flags=re.S)
+    return html.unescape(re.sub(r"<[^>]+>", "", s))
+
+
+def visible_len(html_text):
+    """Length as Telegram counts it: after entity parsing (tags/hrefs removed), in UTF-16 code units."""
+    return len(html.unescape(re.sub(r"<[^>]+>", "", html_text)).encode("utf-16-le")) // 2
+
+
+def check_banned(html_text, pub):
+    hits = word_hits(readable(html_text), pub["banned_words"])
+    if hits:  # template or token-derived text; never publish it
+        raise ValueError(f"banned word in digest: {hits}")
+
+
 def _footer(pub):
-    lines = [f"All tiers: {pub['site_url']}"] if pub.get("site_url") else []
-    return lines + [pub["disclaimer"]]
+    lines = [f'🔗 <a href="{html.escape(pub["site_url"])}">All tiers on the website</a>'] if pub.get("site_url") else []
+    return lines + [f"<i>{html.escape(pub['disclaimer'])}</i>"]
 
 
-def _check_prose(prose_lines, pub):
-    hits = word_hits("\n".join(prose_lines), pub["banned_words"])
-    if hits:  # template bug, not token data (names are filtered earlier)
-        raise ValueError(f"banned word in digest template: {hits}")
+# --- daily card ---------------------------------------------------------------
+
+def card_stats(tier, m):
+    """Two stat lines for a card row."""
+    if tier == "new_launches":
+        return [f"Liquidity {compact_usd(m['liquidity_usd'])}  ·  24h volume {compact_usd(m['volume_h24_usd'])}",
+                f"{m['holders']:,} holders  ·  {m['age_h']:.0f}h old"]
+    return [f"MCap {compact_usd(m['mcap_usd'])}  ·  Liquidity {compact_usd(m['liquidity_usd'])}",
+            f"{m['holders']:,} holders  ·  {m['age_d']:.0f} days old"]
 
 
-def token_block(i, m, pub):
-    """(prose lines, full lines) for one New Launch in the daily digest."""
-    sym, name = display_name(m, pub)
-    growth = m.get("holder_growth_per_h")
-    warns = [r.split(":", 1)[1] for r in m.get("rc_risks", []) if r.startswith("warn:")]
-    prose = [
-        f"{i}) {sym}" + (f" - {name}" if name and name != sym else ""),
-        f"Age {m['age_h']:.0f}h · Liquidity {fmt_usd(m['liquidity_usd'])} "
-        f"({m['rc_lp_locked_pct']:.1f}% of LP locked or burned)",
-        f"24h volume {fmt_usd(m['volume_h24_usd'])} · 24h trades {m['txns_h24']:,}",
-        f"Holders {m['holders']:,}" + (f" ({growth:+,.0f}/h over {m['history_h']:.1f}h)" if growth is not None else "")
-        + f" · Top 10 (excl. pools) {m['rc_top10_holders_pct']:.1f}%",
-        "Mint and freeze authority revoked · RugCheck warnings: " + (", ".join(warns) if warns else "none"),
-    ]
-    full = [prose[0], m["address"], *prose[1:], m["url"]]
-    return prose, full
+def daily_caption(sections, now, pub):
+    """sections: [(tier, [metrics])]. Drops copyable addresses tier by tier (Established first) if needed
+    to fit Telegram's caption limit."""
+    def build(with_ca):
+        lines = [f"📊 <b>Coin Sieve · Daily screen</b>", f"<i>{_date(now)} · Solana</i>"]
+        for tier, items in sections:
+            if not items:
+                continue
+            lines += ["", f"{TIER_EMOJI[tier]} <b>{TIER_LABEL[tier]}</b>"]
+            for m in items:
+                sym, _ = display_name(m, pub)
+                link = f'<a href="{html.escape(m["url"])}">{html.escape(sym)}</a>'
+                lines.append(f"{link} · <code>{m['address']}</code>" if tier in with_ca else link)
+        return "\n".join(lines + [""] + _footer(pub))
 
-
-def daily_text(tokens, now, pub):
-    """tokens: ranked metrics dicts (already filtered for blocked names). Returns (text, used)."""
-    head = [f"Coin Sieve · New Launches · {_date(now)}",
-            "Solana tokens 6-48h old that passed every filter."]
-    if not tokens:
-        prose = head[:1] + ["0 tokens passed the filter today."] + _footer(pub)
-        _check_prose(prose, pub)
-        return "\n".join(prose), []
-    used, blocks, prose_all = [], [], list(head)
-    for m in tokens:
-        prose, full = token_block(len(used) + 1, m, pub)
-        if word_hits("\n".join(prose), pub["banned_words"]):
-            continue  # e.g. a RugCheck warning name containing a banned word
-        candidate = "\n\n".join(["\n".join(head), *blocks, "\n".join(full), "\n".join(_footer(pub))])
-        if len(candidate) > TG_LIMIT:
+    with_ca = [t for t, _ in sections]
+    text = build(with_ca)
+    for drop in ("established", "emerging", "new_launches"):
+        if visible_len(text) <= CAPTION_LIMIT:
             break
-        blocks.append("\n".join(full))
-        prose_all += prose
-        used.append(m)
-    _check_prose(prose_all + _footer(pub), pub)
-    return "\n\n".join(["\n".join(head), *blocks, "\n".join(_footer(pub))]), used
+        with_ca = [t for t in with_ca if t != drop]
+        text = build(with_ca)
+    check_banned(text, pub)
+    return text
 
 
-def _names(events, pub, with_detail=False, cap=15):
+def zero_text(now, pub):
+    text = "\n".join([f"📊 <b>Coin Sieve · Daily screen</b>", f"<i>{_date(now)} · Solana</i>", "",
+                      "No token passed every filter today.", ""] + _footer(pub))
+    check_banned(text, pub)
+    return text
+
+
+# --- weekly / alerts ------------------------------------------------------------
+
+def record_line(label, s):
+    """One neutral track-record line from track_record.summarize() output."""
+    if not s or not s.get("n"):
+        return f"• {label}: not enough data yet"
+    pct = lambda v: "n/a" if v is None else f"{v:+.0f}%"  # noqa: E731
+    return (f"• {label} (n={s['n']}): still in a tier {s['in_a_tier']} · no longer listed {s['not_found']} · "
+            f"median price {pct(s['median_price_change_pct'])} · median liquidity {pct(s['median_liquidity_change_pct'])}")
+
+
+def _names(events, pub, with_detail=False, cap=12):
     out = []
     for e in events[:cap]:
-        sym = clean_text(e["symbol"], pub["max_symbol_len"]) or "?"
+        sym = html.escape(clean_text(e["symbol"], pub["max_symbol_len"]) or "?")
         if with_detail and e["detail"]:
-            codes = sorted({d.split(":")[0].strip() for d in e["detail"].split(";")})
-            sym += f" ({', '.join(codes)})"
+            codes = sorted({d.split(":")[0].strip().replace("_", " ") for d in e["detail"].split(";")})
+            sym += f" <i>({html.escape(', '.join(codes))})</i>"
         out.append(sym)
     if len(events) > cap:
         out.append(f"+{len(events) - cap} more")
     return ", ".join(out)
 
 
-def weekly_text(events, now, start, pub):
-    """events: tier_events rows of the week (bootstrap + blocked names already removed)."""
+def weekly_caption(events, now, start, pub, tracked):
+    """Short caption for the weekly card (details are in the image).
+    events: tier_events rows of the week (bootstrap + blocked names already removed)."""
     by = lambda tier, kind: [e for e in events if e["tier"] == tier and e["kind"] == kind]  # noqa: E731
-    prose = [f"Coin Sieve · weekly tier changes · {_date(start)} - {_date(now)}", ""]
+    listed = len(by("new_launches", "entered"))
     grads = by("emerging", "graduated")
-    prose.append("Graduated (New Launches -> Emerging): " + (_names(grads, pub) if grads else "none"))
+    lines = ["🗓 <b>Coin Sieve · Weekly report</b>", f"<i>{_date(start)} - {_date(now)} · Solana</i>", "",
+             f"{TIER_EMOJI['new_launches']} New tokens tracked: <b>{tracked:,}</b> · passed every filter: <b>{listed}</b>",
+             f"🎓 Graduated to Emerging: {_names(grads, pub) if grads else 'none'}"]
     for tier in ("emerging", "established"):
-        entered, left = by(tier, "entered"), by(tier, "left")
-        prose.append(f"{TIER_LABEL[tier]} - entered: {_names(entered, pub) if entered else 'none'}"
-                     f" · left: {_names(left, pub, with_detail=True) if left else 'none'}")
-    prose.append(f"New Launches listed this week: {len(by('new_launches', 'entered'))}")
-    prose += [""] + _footer(pub)
-    _check_prose(prose, pub)
-    return "\n".join(prose)[:TG_LIMIT]
+        lines.append(f"{TIER_EMOJI[tier]} {TIER_LABEL[tier]}: {len(by(tier, 'entered'))} entered · "
+                     f"{len(by(tier, 'left'))} left")
+    text = "\n".join(lines + [""] + _footer(pub))
+    check_banned(text, pub)
+    return text
 
 
 def alerts_text(events, pub):
     """Established-tier entries/exits since the last alert."""
     entered = [e for e in events if e["kind"] == "entered"]
     left = [e for e in events if e["kind"] == "left"]
-    prose = ["Coin Sieve · Established tier update", ""]
+    lines = [f"{TIER_EMOJI['established']} <b>Coin Sieve · Established tier update</b>", ""]
     if entered:
-        prose.append(f"Entered: {_names(entered, pub)}")
+        lines.append(f"➕ Entered: {_names(entered, pub)}")
     if left:
-        prose.append(f"Left: {_names(left, pub, with_detail=True)}")
-    prose += [""] + _footer(pub)
-    _check_prose(prose, pub)
-    return "\n".join(prose)[:TG_LIMIT]
+        lines.append(f"➖ Left: {_names(left, pub, with_detail=True)}")
+    text = "\n".join(lines + [""] + _footer(pub))
+    check_banned(text, pub)
+    return text[:TG_LIMIT]

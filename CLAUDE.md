@@ -34,6 +34,7 @@ A Solana token screener product, aiming for revenue:
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).
 - `python sieve.py telegram-check` — one test line to the TEST chat.
+- `python sieve.py track-record` — what happened to tier entries at 24h / 72h / 7d (every `run` records due checkpoints).
 - Cadence (decided 2026-10-08, implement in Stage 9): `run --tiers new_launches` every 15 min; `run --tiers emerging,established` hourly; `digest daily` once a day; `digest weekly` once a week; `digest alerts` hourly after the Jupiter tiers run.
 - `python -m unittest discover tests` — unit tests (no network).
 
@@ -80,4 +81,9 @@ A Solana token screener product, aiming for revenue:
 - Posts are plain text (no parse_mode) so token names need no escaping. Bot token is redacted from all error strings.
 - Banned-word check runs on post prose only (not addresses/URLs — base58 can contain "gem"/"buy" by chance).
 - A token is postable only with ≥ `ranking.min_history_hours` of Jupiter holder snapshots, so it must pass on several runs.
+- Track record (Stage 7): `outcomes` table, Jupiter-only values. Vanished tokens (`found = 0`) stay in the stats — never drop them (survivorship bias). Late/missed checkpoints are skipped, not back-filled.
+- Daily/weekly posts are PNG cards (`card.py`) + short HTML captions (`digest.py`), sent via `sendPhoto` (caption ≤ 1024 visible UTF-16 units). Daily card: logo strip, screening funnel per tier (`funnel.py`, saved per run in `run_stats`), 3 tokens per tier with 48h price sparklines (GeckoTerminal OHLCV; pool address from DexScreener; 7 s spacing, 20 s backoff — its free limit is tight).
+- Logos: real logos (Jupiter `icon`) only for `publishing.logo_tiers` (Emerging, Established). New Launches always get letter badges — user decision 2026-10-08, their images are unvetted. Logo fetch is https-only, size-capped, raster-only, cached in `data/logos`.
+- Emoji policy: calm section markers only (📊 🆕 🌱 🏛 🗓 🎓). Never 🚀 / 💎 (hype; 💎 = "gem").
+- `digest daily|weekly --preview [--post]` ignores post history and records nothing — for design iterations.
 - Digests (Stage 6): `digest.py` builds texts; names/symbols go through `sanitize.clean_text` and are skipped if they hit `banned_words` or `blocked_words`. A tier's first hour of events (`bootstrap_hours`) and config exclusions (`excluded_*`) are never published.

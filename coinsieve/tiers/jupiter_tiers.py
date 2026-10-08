@@ -59,6 +59,7 @@ def jup_metrics(t, now):
         "top_holders_pct": audit.get("topHoldersPercentage"),
         "dev_mints": audit.get("devMints"),
         "tags": t.get("tags") or [],
+        "icon": t.get("icon"),
         "url": f"https://dexscreener.com/solana/{t['id']}",
     }
 

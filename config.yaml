@@ -38,6 +38,12 @@ tiers:
     require_freeze_authority_disabled: false
     max_top_holders_pct: null
 
+track_record:
+  # Snapshot (Jupiter price/mcap/liquidity/holders) of every tier entry at these offsets.
+  checkpoints_hours: {0h: 0, 24h: 24, 72h: 72, 7d: 168}
+  catch_up_hours: 6               # a checkpoint missed by more than this (downtime) is skipped, not taken late
+  baseline_max_delay_hours: 2     # entries whose 0h snapshot came later than this are left out of stats
+
 jupiter:
   base_url: https://lite-api.jup.ag/tokens/v2
   universe:                      # token lists unioned each run (+ every token ever in a tier)
@@ -101,8 +107,12 @@ ranking:
   min_holder_growth_per_hour: 0   # declining holder count -> not posted
 
 publishing:                       # Telegram digests (and later the website)
-  daily_max_tokens: 5             # New Launches per daily digest; a token is never listed twice per chat
-  daily_max_metrics_age_minutes: 60   # skip tokens whose latest evaluation is older (stale data)
+  per_tier: 3                     # tokens per tier on the daily card (3-5 looks good)
+  feature_cooldown_days: 7        # Emerging/Established: don't re-feature a token within this many days
+                                  # (New Launches are never shown twice per chat)
+  chart_hours: 48                 # price sparkline length on the card
+  logo_tiers: [emerging, established]   # real logos only here; New Launches get letter badges (unvetted images)
+  daily_max_metrics_age_minutes: 90   # skip tokens whose latest evaluation is older (stale data)
   post_zero_summary: false        # daily digest says "0 passed" instead of sending nothing
   alerts_lookback_hours: 24       # Established alerts consider events this recent
   bootstrap_hours: 1              # events within this long after a tier's first run = initial fill, never posted
@@ -123,7 +133,12 @@ api:
   rugcheck_base: https://api.rugcheck.xyz/v1
   rugcheck_min_interval_s: 1.0       # header X-Rate-Limit-Limit: 15; 1/s gave no 429s
   jupiter_min_interval_s: 1.0
+  geckoterminal_base: https://api.geckoterminal.com/api/v2
+  geckoterminal_min_interval_s: 7.0  # 429s seen after ~6 calls at 2.1 s spacing
+  geckoterminal_backoff_s: 20        # after a 429: wait 20 s, then 40 s
 
 storage:
   db_path: data/coinsieve.db
+  card_dir: data/cards       # daily card PNGs (git-ignored with data/)
+  logo_dir: data/logos       # cached, normalised token logos
   log_dir: logs

@@ -41,6 +41,38 @@ CREATE TABLE IF NOT EXISTS digests (
     message_id INTEGER,
     PRIMARY KEY (kind, period, chat)
 );
+-- Track record: what happened to each tier entry at fixed checkpoints after it entered.
+-- All values from Jupiter (one source). found = 0 means Jupiter no longer lists the token.
+CREATE TABLE IF NOT EXISTS outcomes (
+    address       TEXT NOT NULL,
+    tier          TEXT NOT NULL,
+    entered_at    REAL NOT NULL,
+    checkpoint    TEXT NOT NULL,             -- e.g. 0h (baseline), 24h, 72h, 7d
+    ts            REAL NOT NULL,             -- when the snapshot was actually taken
+    found         INTEGER NOT NULL,
+    price_usd     REAL,
+    mcap_usd      REAL,
+    liquidity_usd REAL,
+    holders       INTEGER,
+    tiers_now     TEXT,                      -- tiers the token is a member of at snapshot time
+    PRIMARY KEY (address, tier, entered_at, checkpoint)
+);
+-- Funnel numbers per tier per run (JSON from funnel.stats), shown on the daily card.
+CREATE TABLE IF NOT EXISTS run_stats (
+    ts    REAL NOT NULL,
+    tier  TEXT NOT NULL,
+    stats TEXT NOT NULL,
+    PRIMARY KEY (ts, tier)
+);
+-- Emerging/Established tokens featured on a daily card (rotation: not repeated within a cooldown).
+CREATE TABLE IF NOT EXISTS featured (
+    address    TEXT NOT NULL,
+    tier       TEXT NOT NULL,
+    chat       TEXT NOT NULL,
+    ts         REAL NOT NULL,
+    message_id INTEGER,
+    PRIMARY KEY (address, tier, chat, ts)
+);
 CREATE TABLE IF NOT EXISTS posted_events (
     event_id INTEGER NOT NULL,
     chat     TEXT NOT NULL,
@@ -178,6 +210,24 @@ class Store:
     def add_digest(self, kind, period, chat, now, message_id):
         self.db.execute("INSERT INTO digests VALUES (?, ?, ?, ?, ?)", (kind, period, chat, now, message_id))
 
+    def save_run_stats(self, tier, stats, now):
+        self.db.execute("INSERT OR REPLACE INTO run_stats VALUES (?, ?, ?)", (now, tier, json.dumps(stats)))
+
+    def latest_run_stats(self, tier):
+        r = self.db.execute("SELECT stats FROM run_stats WHERE tier = ? ORDER BY ts DESC LIMIT 1", (tier,)).fetchone()
+        return json.loads(r[0]) if r else None
+
+    def tokens_seen_since(self, since):
+        return self.db.execute("SELECT COUNT(*) FROM tokens WHERE first_seen >= ?", (since,)).fetchone()[0]
+
+    def featured_since(self, tier, chat, since):
+        return {r[0] for r in self.db.execute(
+            "SELECT address FROM featured WHERE tier = ? AND chat = ? AND ts >= ?", (tier, chat, since))}
+
+    def add_featured(self, address, tier, chat, now, message_id):
+        self.db.execute("INSERT OR IGNORE INTO featured VALUES (?, ?, ?, ?, ?)",
+                        (address, tier, chat, now, message_id))
+
     def posted_event_ids(self, chat):
         return {r[0] for r in self.db.execute("SELECT event_id FROM posted_events WHERE chat = ?", (chat,))}
 
@@ -218,6 +268,27 @@ class Store:
         if tier:
             sql, args = sql + " AND tier = ?", args + [tier]
         return self.db.execute(sql + " ORDER BY ts, id", args).fetchall()
+
+    # --- track record ---
+    def tier_entries(self, since):
+        return self.db.execute("SELECT address, tier, symbol, entered_at FROM tier_members WHERE entered_at >= ?",
+                               (since,)).fetchall()
+
+    def recorded_checkpoints(self):
+        return {(r[0], r[1], r[2], r[3]) for r in self.db.execute(
+            "SELECT address, tier, entered_at, checkpoint FROM outcomes")}
+
+    def add_outcome(self, row):
+        self.db.execute("INSERT OR IGNORE INTO outcomes (address, tier, entered_at, checkpoint, ts, found, price_usd, "
+                        "mcap_usd, liquidity_usd, holders, tiers_now) VALUES (:address, :tier, :entered_at, "
+                        ":checkpoint, :ts, :found, :price_usd, :mcap_usd, :liquidity_usd, :holders, :tiers_now)", row)
+
+    def outcomes(self, tier):
+        return [dict(r) for r in self.db.execute("SELECT * FROM outcomes WHERE tier = ?", (tier,))]
+
+    def tiers_of(self, address):
+        return sorted(r[0] for r in self.db.execute(
+            "SELECT tier FROM tier_members WHERE address = ? AND left_at IS NULL", (address,)))
 
     def tier_first_event_ts(self, tier):
         """When a tier was first populated; events right after it are the initial bootstrap."""
