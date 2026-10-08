@@ -5,6 +5,7 @@ Usage:
     python sieve.py digest daily|weekly|alerts [--post]                  # dry run unless --post (TEST chat)
     python sieve.py telegram-check                                      # one test line to the TEST chat
     python sieve.py track-record                                        # what happened after tier entries
+    python sieve.py web                                                 # private dashboard (127.0.0.1:8765)
 """
 import argparse
 import logging
@@ -328,6 +329,10 @@ def main():
                        help="daily only: ignore post history and record nothing (design previews)")
     sub.add_parser("telegram-check", help="send one test line to the TEST chat")
     sub.add_parser("track-record", help="print track-record stats per tier and checkpoint")
+    p_web = sub.add_parser("web", help="private dashboard on http://127.0.0.1:<port>")
+    p_web.add_argument("--port", type=int, default=8765)
+    p_web.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
+    p_web.add_argument("--public", action="store_true", help="read-only public mode (no saving filters, no runs)")
     args = parser.parse_args()
     command = args.command or "run"
 
@@ -344,6 +349,9 @@ def main():
         return cmd_run(cfg, tiers)
     if command == "track-record":
         return cmd_track_record(cfg)
+    if command == "web":
+        from coinsieve.dashboard import serve
+        return serve(args.config, args.port, open_browser=not args.no_browser, public=args.public)
 
     # Chat id is not secret: dry runs use it too, so dedupe reflects the target chat.
     env = dotenv_values(".env")

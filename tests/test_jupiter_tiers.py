@@ -53,6 +53,15 @@ class JupiterTierTest(unittest.TestCase):
         self.assertIsNone(m["age_d"])
         self.assertFalse(in_age_range(m["age_d"], EMERGING))
 
+    def test_checklist_agrees_with_status(self):
+        from coinsieve import whatif
+        cfg = {"tiers": {"emerging": EMERGING}, "jupiter": {"exclude_tags": ["stable", "lst"], "exclude_mints": list(EXCL["mints"])}}
+        for t in (token(), token(liquidity=None), token(tags=["stable"]), token(audit={}), token(firstPool=None),
+                  token(mcap=99e6), token(holderCount=10)):
+            m = jup_metrics(t, NOW)
+            self.assertEqual(whatif.checks_status(whatif.jupiter_checks(m, "emerging", cfg)),
+                             whatif.jupiter_status(m, "emerging", cfg)[0], t)
+
     def test_open_ended_age_range(self):
         self.assertTrue(in_age_range(5000, {"min_age_days": 365, "max_age_days": None}))
 

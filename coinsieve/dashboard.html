@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coin Sieve</title>
+<style>
+  :root {
+    --bg: #111215; --side: #0d0e11; --panel: #16171b; --panel2: #1c1d22; --hover: #1f2026; --line: #24252b;
+    --text: #ececf1; --muted: #8b8c96; --dim: #5c5d66;
+    --green: #2fbd71; --red: #f0475b; --amber: #f2b33d; --blue: #5ea0ff; --violet: #a685ff; --gold: #f2c94c;
+    --nl: #5ea0ff; --em: #a685ff; --es: #f2b33d;
+    --sidew: 220px; --rightw: 370px; --row: 44px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font: 13px/1.35 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  .app { height: 100vh; display: grid; grid-template-columns: var(--sidew) minmax(0, 1fr) var(--rightw); grid-template-rows: 46px minmax(0, 1fr); }
+  body.public .admin-only { display: none !important; }
+
+  /* sidebar */
+  .side { grid-row: 1 / 3; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 10px; min-height: 0; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px; font-weight: 800; font-size: 17px; letter-spacing: .04em; white-space: nowrap; }
+  .brand .mark { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; font-size: 12px; font-weight: 900; letter-spacing: 0; }
+  .navlabel { color: var(--dim); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 6px 8px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav button { display: flex; align-items: center; gap: 11px; border: 0; background: none; border-radius: 8px; padding: 9px 8px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; text-align: left; }
+  .nav button:hover { background: var(--hover); color: var(--text); }
+  .nav button.on { background: var(--panel2); color: var(--text); }
+  .nav .ico { flex: none; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; font: 800 10px var(--mono); color: #0d0e11; }
+  .nav .lbl { flex: 1; white-space: nowrap; }
+  .nav .cnt { font: 700 11px var(--mono); color: var(--muted); background: #22232a; padding: 1px 7px; border-radius: 999px; }
+  .side .grow { flex: 1; }
+  .sidelink { border: 0; background: none; color: var(--muted); text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
+  .sidelink:hover { background: var(--hover); color: var(--text); } .sidelink .i { width: 26px; text-align: center; }
+  .modebadge { margin: 6px 8px 10px; font: 800 10px var(--mono); color: var(--amber); letter-spacing: .08em; white-space: nowrap; }
+  .runbtn { border: 0; border-radius: 8px; padding: 10px; cursor: pointer; background: #fff; color: #000; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+  .runbtn:disabled { opacity: .6; cursor: default; }
+  .runstat { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .runstat.ok { color: var(--green); } .runstat.err { color: var(--red); } .runstat.busy { color: var(--amber); }
+
+  /* ticker */
+  .ticker { grid-column: 2 / 4; display: flex; align-items: center; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--side); overflow: hidden; min-width: 0; white-space: nowrap; }
+  .ticker .tl { color: var(--muted); font-weight: 700; font-size: 12px; margin-right: 8px; flex: none; }
+  .tk { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 13px; border: 0; background: none; cursor: pointer; }
+  .tk:hover { background: var(--hover); }
+  .tk .rank { color: var(--dim); font-weight: 600; } .tk .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .k.entered { color: var(--green); } .k.left { color: var(--red); } .k.graduated { color: var(--violet); }
+  .tk .ago { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .tk.more { color: var(--text); background: var(--panel2); border: 1px solid var(--line); margin-left: auto; }
+
+  /* center */
+  .center { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
+  .head { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .head h1 { margin: 0; font-size: 18px; font-weight: 800; white-space: nowrap; }
+  .head .subt { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .stats { margin-left: auto; display: flex; gap: 18px; white-space: nowrap; }
+  .stat { text-align: right; } .stat .l { color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .stat .v { font: 700 15px var(--mono); } .stat .d { font: 700 11px var(--mono); margin-left: 4px; }
+  .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .tf { display: flex; gap: 2px; }
+  .tf button { border: 0; background: none; color: var(--muted); font-weight: 600; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
+  .tf button:hover { color: var(--text); } .tf button.on { color: var(--blue); background: rgba(94, 160, 255, .1); }
+  .sep { width: 1px; height: 20px; background: var(--line); }
+  .search { display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; width: 260px; }
+  .search input { border: 0; background: none; outline: none; width: 100%; }
+  .bar .meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .twrap { flex: 1; min-height: 0; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { height: 36px; padding: 0 10px; background: var(--panel); color: var(--text); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; text-align: left;
+       border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; user-select: none; }
+  th:hover { color: var(--blue); } th .ar { color: var(--blue); }
+  th.r, td.r { text-align: right; }
+  td { height: var(--row); padding: 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr { cursor: pointer; } tbody tr:hover td { background: var(--hover); }
+  tbody tr.sel td { background: #20222a; } tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .two { display: flex; flex-direction: column; line-height: 1.25; } .two > * { overflow: hidden; text-overflow: ellipsis; }
+  .r .two { align-items: flex-end; }
+  .sub { color: var(--muted); font-size: 11.5px; font-weight: 500; }
+  .sym { font-weight: 800; } .star { color: var(--gold); margin-right: 4px; } .warn { color: var(--amber); margin-left: 5px; }
+  .st { font-weight: 700; } .st.pass { color: var(--green); } .st.fail { color: var(--red); } .st.unknown { color: var(--amber); }
+  .chg { font: 700 11px var(--mono); margin-left: 5px; } .chg.up { color: var(--green); } .chg.down { color: var(--red); }
+  .why { color: var(--muted); } .why.ok { color: #7fd3a5; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .mid { color: var(--amber); }
+  .empty { color: var(--muted); text-align: center; cursor: default; }
+  .pager { display: flex; align-items: center; gap: 4px; padding: 7px 12px; border-top: 1px solid var(--line); }
+  .pager .info { color: var(--muted); font-size: 12px; margin-right: auto; }
+  .pager button { min-width: 30px; height: 28px; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 600; }
+  .pager button:hover:not(:disabled) { color: var(--text); background: var(--hover); }
+  .pager button.on { background: var(--text); color: #000; border-color: var(--text); }
+  .pager button:disabled { opacity: .35; cursor: default; } .pager .gap { color: var(--dim); padding: 0 2px; }
+
+  /* right panel */
+  .right { grid-column: 3; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
+  .rtabs { display: flex; border-bottom: 1px solid var(--line); }
+  .rtabs button { flex: 1; border: 0; background: none; padding: 11px; cursor: pointer; color: var(--muted); font-weight: 700; border-bottom: 2px solid transparent; }
+  .rtabs button.on { color: var(--text); border-bottom-color: var(--text); }
+  .rbody { flex: 1; min-height: 0; overflow: hidden; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .tok { display: flex; align-items: center; gap: 10px; }
+  .av { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #0d0e11; font-size: 16px; }
+  .tok .nm { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tok .ds { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font: 800 10px var(--mono); padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; }
+  .warnstrip { background: rgba(242, 179, 61, .1); border: 1px solid rgba(242, 179, 61, .35); color: #f6d38b; border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+  .lrow { display: flex; gap: 6px; }
+  .lb { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 6px;
+        color: var(--text); text-decoration: none; font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+  .lb:hover { background: var(--hover); }
+  .grid { display: grid; gap: 6px; grid-template-columns: repeat(3, 1fr); }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; text-align: center; min-width: 0; cursor: help; }
+  .box .l { color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+  .box .v { font: 800 15px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .checks { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .checks.pass { border-color: rgba(47, 189, 113, .4); } .checks.fail { border-color: rgba(240, 71, 91, .35); } .checks.unknown { border-color: rgba(242, 179, 61, .35); }
+  .checks .ct { font-weight: 800; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .checks .ct span { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .ck { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; font-size: 12px; line-height: 19px; cursor: help; }
+  .ck .ic { font-weight: 800; text-align: center; } .ck .ic.ok { color: var(--green); } .ck .ic.bad { color: var(--red); } .ck .ic.unk { color: var(--amber); } .ck .ic.inf { color: var(--dim); }
+  .ck .lb2 { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ck .val { font-family: var(--mono); font-weight: 600; white-space: nowrap; } .ck .val small { color: var(--dim); font-weight: 500; margin-left: 5px; }
+  .ck.bad .lb2 { color: var(--text); }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: var(--dim); }
+  .linkbtn { border: 0; background: none; color: var(--blue); cursor: pointer; padding: 0; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .placeholder { color: var(--muted); text-align: center; margin-top: 40px; }
+
+  /* filters tab */
+  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .presets button { border: 1px solid var(--line); background: var(--panel2); border-radius: 7px; padding: 7px 4px; cursor: pointer; font-weight: 700; }
+  .presets button:hover { background: var(--hover); } .presets button.on { background: #fff; color: #000; border-color: #fff; }
+  .pdesc { color: var(--muted); font-size: 11.5px; margin-top: -3px; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 9px; align-content: start; overflow: auto; min-height: 0; }
+  .group { grid-column: span 2; color: var(--dim); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-top: 3px; }
+  .group.toggle { cursor: pointer; } .group.toggle:hover { color: var(--muted); }
+  .field { min-width: 0; }
+  .field label { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; }
+  .field label > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+  .field .q { flex: none; width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--dim); color: var(--dim); font-size: 9px; display: inline-grid; place-items: center; cursor: help; }
+  .field input[type=number], .field input[type=text] { width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: 600 12.5px var(--mono); }
+  .field input:focus { outline: none; border-color: var(--blue); }
+  .field.changed input[type=number], .field.changed input[type=text] { border-color: var(--amber); }
+  .field .hint { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .field .hint .rm { color: var(--red); font-weight: 700; } .field .hint .rm0 { color: var(--dim); }
+  .field.bool { grid-column: span 2; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; }
+  .field.bool.changed { border-color: var(--amber); } .field.bool label { margin: 0; color: var(--text); font-size: 12px; flex: 1; }
+  .field.bool .hint { margin: 0; } .field.bool input { accent-color: var(--blue); }
+  .factions { display: flex; gap: 6px; }
+  .factions button { flex: 1; border-radius: 7px; padding: 9px; font-weight: 700; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); }
+  .factions button.save { background: #fff; color: #000; border-color: #fff; }
+  .fmsg { min-height: 16px; font-size: 12px; color: var(--muted); }
+  .fmsg.ok { color: var(--green); } .fmsg.err { color: var(--red); }
+
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); display: none; place-items: center; z-index: 20; }
+  .overlay.on { display: grid; }
+  .modal { width: min(720px, 92vw); max-height: 82vh; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 800; font-size: 15px; }
+  .modal .mh button { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+  .modal .mb { overflow: auto; padding: 8px 16px 14px; }
+  .evrow { display: grid; grid-template-columns: 10px 110px 90px 110px 60px minmax(0, 1fr); gap: 10px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+  .evrow:hover { background: var(--hover); } .evrow .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .evrow b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .evrow .m { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gl h3 { margin: 14px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .gl dl { margin: 0; display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; } .gl dt { font-weight: 700; } .gl dd { margin: 0; color: #c9cad3; }
+
+  @media (max-height: 800px) {  /* short laptop screens: tighter right panel so everything fits */
+    .rbody { gap: 6px; padding: 9px 14px; } .fields { gap: 3px 9px; }
+    .field input[type=number], .field input[type=text] { padding: 2px 8px; } .field.bool { padding: 3px 9px; }
+    .presets button { padding: 5px 4px; } .factions button { padding: 7px; } .group { margin-top: 1px; }
+  }
+  @media (max-width: 1500px) {
+    :root { --sidew: 64px; --rightw: 340px; }
+    .brand span, .nav .lbl, .navlabel, .runstat, .runbtn .t, .sidelink .t, .modebadge { display: none; }
+    .brand { justify-content: center; padding: 2px 0 14px; } .sidelink { justify-content: center; }
+    .nav button { justify-content: center; position: relative; padding: 9px 0; }
+    .nav .cnt { position: absolute; top: 0; right: 0; font-size: 9.5px; padding: 0 5px; }
+    .stats { gap: 12px; } th, td { padding: 0 7px; } .search { width: 190px; }
+  }
+  @media (max-width: 1100px) {
+    body { overflow: auto; } .app { height: auto; grid-template-columns: 1fr; grid-template-rows: auto; }
+    .side, .ticker, .center, .right { grid-column: 1; grid-row: auto; } .center { min-height: 640px; } .twrap { overflow-x: auto; } table { min-width: 900px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="mark">CS</div><span>COIN SIEVE</span></div>
+    <div class="modebadge admin-only">ADMIN MODE</div>
+    <div class="navlabel">Tiers</div>
+    <div class="nav" id="nav"></div>
+    <div class="grow"></div>
+    <button class="sidelink" id="glossBtn" title="What do these numbers mean?"><span class="i">ⓘ</span><span class="t">How to read this</span></button>
+    <div class="admin-only">
+      <button class="runbtn" id="runBtn" title="Refresh this tier now (admin)">▶<span class="t" id="runTxt">Refresh</span></button>
+      <div class="runstat" id="runStatus">idle</div>
+    </div>
+  </aside>
+  <div class="ticker" id="ticker"></div>
+  <section class="center">
+    <div class="head">
+      <div><h1 id="title"></h1><div class="subt" id="subtitle"></div></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="bar">
+      <div class="tf" id="tf"></div><div class="sep"></div>
+      <label class="search"><span>⌕</span><input id="search" placeholder="Search symbol, name, address"></label>
+      <span class="meta" id="meta"></span>
+    </div>
+    <div class="twrap" id="twrap"><table><colgroup id="cols"></colgroup><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+    <div class="pager" id="pager"></div>
+  </section>
+  <aside class="right">
+    <div class="rtabs"><button id="tabToken" class="on">Token</button><button id="tabFilters">Filters</button></div>
+    <div class="rbody" id="rbody"></div>
+  </aside>
+</div>
+<div class="overlay" id="overlay"><div class="modal"><div class="mh"><span id="mTitle"></span><button id="mClose" title="Close">✕</button></div><div class="mb" id="mBody"></div></div></div>
+
+<script>
+"use strict";
+const ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const ROW_H = 44, HEAD_H = 36;
+const TIER = {
+  new_launches: { short: "NL", color: "var(--nl)", sub: "6–48h old · passed every filter" },
+  emerging: { short: "EM", color: "var(--em)", sub: "7–180 days · $1M–50M market cap" },
+  established: { short: "ES", color: "var(--es)", sub: "1+ year · $200M+ market cap" },
+};
+const PRESET_TEXT = { strict: "Fewer tokens, stronger numbers on every check.", balanced: "The default screen.",
+                      loose: "More tokens, weaker numbers — more noise." };
+// Plain-language explanations (shown as tooltips and in the "How to read this" guide). Wording rules apply here too.
+const EXPLAIN = {
+  liquidity: "Money sitting in the trading pool, in USD. More liquidity means trades move the price less.",
+  lp: "Share of the pool's money that nobody can withdraw. If the creator could withdraw it, they could empty the pool — the classic rug pull. 100% = fully locked.",
+  mcap: "Price × tokens in circulation. A rough measure of the token's size.",
+  fdv: "Price × every token that will ever exist, including ones not released yet.",
+  volume: "Dollar value traded in the last 24 hours.",
+  txns: "Number of trades (purchases and sales) in the last 24 hours.",
+  holders: "Wallets that hold the token right now (Jupiter data, matches the blockchain).",
+  growth: "How fast the number of holders is changing: per hour for New Launches, over 24 hours for the other tiers.",
+  top10: "Share of all tokens owned by the 10 biggest wallets, not counting the trading pool. If a few wallets own a lot, their selling can crash the price.",
+  top1: "Share owned by the single biggest wallet, not counting the trading pool.",
+  tophold: "Share held by the biggest wallets according to Jupiter. Can include team, treasury or exchange wallets.",
+  creator: "How many tokens the same creator wallet has launched. Serial launchers often abandon tokens quickly.",
+  organic: "Jupiter's estimate (0–100) of how much trading comes from real users rather than bots. Higher is better.",
+  mint: "Revoked = nobody can create new tokens, so holders can't be diluted by surprise.",
+  freeze: "Revoked = nobody can freeze wallets, so holders can't be blocked from selling.",
+  rugcheck: "RugCheck.xyz is an independent token scanner. Danger-level flags fail the check.",
+  launchpad: "New tokens start on a launchpad curve (e.g. pump.fun). We only list tokens that moved to a normal trading pool.",
+  socials: "Number of social links (X, Telegram, …) the project listed on DexScreener.",
+  type: "Stablecoins, staking tokens and tokenised stocks are excluded — they are not project tokens.",
+  age: "Time since the token's first trading pool was created.",
+};
+const FAIL_LABEL = { age_min: "too young", age_max: "too old", launchpad: "still on launchpad", liquidity: "low liquidity",
+  volume: "low volume", txns: "few trades", socials: "no socials listed", creator: "serial creator", lp: "liquidity not locked",
+  top1: "one wallet holds too much", top10: "top wallets hold too much", rugcheck: "RugCheck flag", data: "incomplete data",
+  type: "stablecoin / staking / stock", mcap_min: "market cap too small", mcap_max: "market cap too large", holders: "too few holders",
+  organic: "mostly bot trading", mint: "mint authority active", freeze: "freeze authority active", top: "top wallets hold too much" };
+const CHECK_EXPLAIN = { age_min: "age", age_max: "age", launchpad: "launchpad", liquidity: "liquidity", volume: "volume", txns: "txns",
+  socials: "socials", creator: "creator", lp: "lp", top1: "top1", top10: "top10", rugcheck: "rugcheck", type: "type", mcap_min: "mcap",
+  mcap_max: "mcap", holders: "holders", organic: "organic", mint: "mint", freeze: "freeze", top: "tophold" };
+
+let S = null, tier = "new_launches", edited = {}, results = null, impact = {}, sortKey = null, sortDir = 1, statusFilter = "all";
+let page = 0, pageSize = 10, selected = null, rightTab = "token", evalTimer = null, pendingSelect = null, showAdvanced = false;
+
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+const num = (v, d = 0) => v === null || v === undefined ? "–"
+  : (Math.abs(v) < 0.5 / 10 ** d ? 0 : Number(v)).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+function usd(v) { if (v === null || v === undefined) return "–"; const a = Math.abs(v);
+  for (const [div, s] of [[1e9, "B"], [1e6, "M"], [1e3, "K"]]) if (a >= div) return "$" + (v / div).toFixed(1) + s; return "$" + num(v); }
+function compact(v) { if (v === null || v === undefined) return "–"; const a = Math.abs(v);
+  if (a >= 1e6) return (v / 1e6).toFixed(1) + "M"; if (a >= 1e4) return (v / 1e3).toFixed(1) + "K"; return num(v); }
+const signed = (v, d, suf = "") => v == null ? "–" : (v >= 0.5 / 10 ** d ? "+" : "") + num(v, d) + suf;
+const tone = (v, d) => v == null ? "" : v >= 0.5 / 10 ** d ? "pos" : v <= -0.5 / 10 ** d ? "neg" : "";
+const pct = (v) => v == null ? "–" : v >= 99.95 ? "100%" : num(v, 1) + "%";
+const unitFmt = { usd, pct: (v) => num(v, v < 10 ? 1 : 0) + "%", h: (v) => num(v, 1) + "h", d: (v) => num(v) + "d", n: (v) => compact(v), x: (v) => num(v, 1) + "×" };
+function ago(ts) { const s = Date.now() / 1000 - ts; if (s < 3600) return Math.max(1, Math.round(s / 60)) + "m"; if (s < 86400) return Math.round(s / 3600) + "h"; return Math.round(s / 86400) + "d"; }
+const code = (r) => r.split(":")[0].trim();
+const label = (r) => S.reason_labels[code(r)] || code(r).replaceAll("_", " ");
+const res = (t) => (results && results[t.metrics.address]) || { status: "unknown", saved: "unknown", reasons: [], checks: [] };
+const tokensOf = () => S.tiers[tier].tokens;
+const concentration = (m) => tier === "new_launches" ? m.rc_top10_holders_pct : m.top_holders_pct;
+const isConcentrated = (m) => { const c = concentration(m); return c != null && c >= S.warn_pct; };
+const realChecks = (r) => (r.checks || []).filter((c) => !c.info);
+
+async function api(path, body) {
+  const opts = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Coin-Sieve": "1" }, body: JSON.stringify(body) } : {};
+  const r = await fetch(path, opts); const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText); return j;
+}
+
+// ---- modal ----------------------------------------------------------------------
+function openModal(title, content) { $("mTitle").textContent = title; $("mBody").replaceChildren(content); $("overlay").classList.add("on"); }
+function closeModal() { $("overlay").classList.remove("on"); }
+$("mClose").onclick = closeModal; $("overlay").onclick = (e) => { if (e.target === $("overlay")) closeModal(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+function showGlossary() {
+  const box = el("div", "gl");
+  const sections = [
+    ["Tiers", [["New Launches", "Tokens 6–48 hours old that passed every check below. The most speculative tier."],
+               ["Emerging", "Tokens 7–180 days old with a $1M–50M market cap that pass the Emerging checks."],
+               ["Established", "Tokens over a year old with a $200M+ market cap. 'Established' describes size and age — not quality."]]],
+    ["Status", [["● PASS", "Passes every check with the current filters."], ["● FAIL", "At least one check failed — the list shows which."],
+                ["● UNKNOWN", "Never reached a later check (e.g. RugCheck), so it is decided on the next refresh."],
+                ["★ Member", "Currently listed in the tier. Members get a short grace period so the list doesn't flicker."],
+                ["⚠ Concentrated", `Top wallets hold at least ${S.warn_pct}% of supply. Not necessarily a problem (can be team, treasury or exchange wallets), but big holders selling can move the price sharply.`]]],
+    ["Numbers", [["Liquidity", EXPLAIN.liquidity], ["Liquidity locked", EXPLAIN.lp], ["Market cap", EXPLAIN.mcap], ["FDV", EXPLAIN.fdv],
+                 ["Volume 24h", EXPLAIN.volume], ["Trades 24h", EXPLAIN.txns], ["Holders", EXPLAIN.holders], ["Holder growth", EXPLAIN.growth],
+                 ["Top 10 wallets", EXPLAIN.top10], ["Largest wallet", EXPLAIN.top1], ["Top wallets (Jupiter)", EXPLAIN.tophold],
+                 ["Creator's launches", EXPLAIN.creator], ["Organic score", EXPLAIN.organic], ["Mint authority", EXPLAIN.mint],
+                 ["Freeze authority", EXPLAIN.freeze], ["RugCheck", EXPLAIN.rugcheck]]],
+  ];
+  for (const [h, rows] of sections) { box.append(el("h3", null, h)); const dl = el("dl"); for (const [k, v] of rows) dl.append(el("dt", null, k), el("dd", null, v)); box.append(dl); }
+  const disc = el("p", "sub", S.disclaimer); disc.style.marginTop = "16px"; box.append(disc);
+  openModal("How to read Coin Sieve", box);
+}
+$("glossBtn").onclick = showGlossary;
+
+// ---- table columns (widths sum to 100%) -----------------------------------------
+function two(main, sub, mainCls = "", subCls = "sub") { const d = el("div", "two"); d.append(el("span", mainCls, main), el("span", subCls, sub)); return d; }
+const STATUS = { key: "status", label: "Status", w: 10, get: (t) => ({ pass: 0, unknown: 1, fail: 2 })[res(t).status],
+  cell: (t) => { const r = res(t), s = el("span"); s.append(el("span", "st " + r.status, "● " + r.status.toUpperCase()));
+    if (r.status !== r.saved) s.append(el("span", "chg " + (r.status === "pass" ? "up" : "down"), r.status === "pass" ? "▲" : "▼")); return s; } };
+const TOKEN = (sub) => ({ key: "symbol", label: "Token", w: 17, get: (t) => (t.metrics.symbol || "").toLowerCase(),
+  cell: (t) => { const d = el("div", "two"), top = el("span"); if (t.member) { const st = el("span", "star", "★"); st.title = "Tier member"; top.append(st); }
+    top.append(el("span", "sym", t.metrics.symbol || "?"));
+    if (isConcentrated(t.metrics)) { const w = el("span", "warn", "⚠"); w.title = `Top wallets hold ${pct(concentration(t.metrics))} of supply`; top.append(w); }
+    d.append(top, el("span", "sub", sub(t.metrics))); return d; } });
+const WHY = (w) => ({ key: "why", label: "Why", w, get: (t) => realChecks(res(t)).filter((c) => c.ok === false).length,
+  cell: (t, td) => { const r = res(t), checks = realChecks(r);
+    if (r.status === "pass") return el("span", "why ok", `✓ all ${mergedChecks(checks).length} checks passed`);
+    if (r.status === "unknown") { td.title = "Creator history and RugCheck run on the next refresh"; return el("span", "why", "waiting for next refresh"); }
+    const failed = checks.filter((c) => c.ok === false); td.title = failed.map((c) => `${c.label}: ${c.value} (${c.limit})`).join("\n");
+    return el("span", "why", [...new Set(failed.map((c) => FAIL_LABEL[c.id] || c.label.toLowerCase()))].join(", ") || r.reasons.map(label).join(", ")); } });
+const n = (key, label, w, fmt, extra = {}) => ({ key, label, w, r: 1, num: 1, fmt, ...extra });
+const COLS = {
+  new_launches: [STATUS, TOKEN((m) => [m.name, m.age_h == null ? "" : num(m.age_h, 1) + "h"].filter(Boolean).join(" · ")),
+    n("liquidity_usd", "Liquidity", 9, usd), n("volume_h24_usd", "Volume", 9, usd), n("txns_h24", "Trades", 8, compact),
+    n("holders", "Holders", 10, null, { cell: (t) => two(compact(t.metrics.holders), signed(t.metrics.holder_growth_per_h, 1, "/h"), "", "sub " + tone(t.metrics.holder_growth_per_h, 1)) }),
+    n("dev_mints", "Creator", 8, (v) => v == null ? "–" : num(v), { cls: (v) => v == null ? "" : v <= 1 ? "pos" : v <= 3 ? "mid" : "neg" }),
+    n("rc_lp_locked_pct", "Locked", 8, pct, { cls: (v) => v == null ? "" : v >= 95 ? "pos" : "neg" }),
+    n("rc_top10_holders_pct", "Top 10", 7, pct), WHY(14)],
+  jup: [STATUS, TOKEN((m) => [m.name, m.age_d == null ? "" : num(m.age_d) + "d"].filter(Boolean).join(" · ")),
+    n("mcap_usd", "MCap", 10, usd), n("liquidity_usd", "Liquidity", 9, usd), n("volume_h24_usd", "Volume", 9, usd),
+    n("holders", "Holders", 11, null, { cell: (t) => two(compact(t.metrics.holders), signed(t.metrics.holder_change_24h_pct, 1, "% 24h"), "", "sub " + tone(t.metrics.holder_change_24h_pct, 1)) }),
+    n("organic_score", "Organic", 8, (v) => num(v), { cls: (v) => v == null ? "" : v >= 70 ? "pos" : v >= 50 ? "mid" : "neg" }),
+    n("top_holders_pct", "Top wallets", 8, pct, { cls: (v) => v != null && v >= S.warn_pct ? "mid" : "" }), WHY(18)],
+};
+const cols = () => tier === "new_launches" ? COLS.new_launches : COLS.jup;
+const valueOf = (c, t) => c.get ? c.get(t) : t.metrics[c.key];
+
+// ---- sidebar / ticker / header ------------------------------------------------------
+function switchTier(key) { tier = key; sortKey = null; sortDir = 1; page = 0; statusFilter = "all"; selected = null; results = null; $("search").value = ""; renderAll(); evaluate(); }
+function renderNav() {
+  const nav = $("nav"); nav.replaceChildren();
+  for (const [key, t] of Object.entries(S.tiers)) {
+    const b = el("button", key === tier ? "on" : ""); b.title = t.label;
+    const ico = el("span", "ico", TIER[key].short); ico.style.background = TIER[key].color;
+    b.append(ico, el("span", "lbl", t.label), el("span", "cnt", String(t.members)));
+    b.onclick = () => { if (key !== tier) switchTier(key); }; nav.append(b);
+  }
+}
+function allEvents() {
+  return Object.entries(S.tiers).flatMap(([k, t]) => t.events.map((e) => ({ ...e, tierKey: k, tierLabel: t.label }))).sort((a, b) => b.ts - a.ts);
+}
+function goToToken(tierKey, address) {
+  closeModal(); pendingSelect = address;
+  if (tierKey !== tier) switchTier(tierKey); else { statusFilter = "all"; $("search").value = ""; applyPending(); renderTf(); renderTable(); renderRight(); }
+}
+function applyPending() {
+  if (!pendingSelect || !results) return;
+  const rows = filteredRows(), i = rows.findIndex((t) => t.metrics.address === pendingSelect);
+  if (i >= 0) { selected = pendingSelect; page = Math.floor(i / pageSize); rightTab = "token"; }
+  pendingSelect = null;
+}
+function renderTicker() {
+  const box = $("ticker"); box.replaceChildren(el("span", "tl", "TIER CHANGES · 7D"));
+  const all = allEvents();
+  if (!all.length) { box.append(el("span", "tk", "No changes yet — a tier's initial fill isn't counted")); return; }
+  const items = all.map((e, i) => {
+    const c = el("button", "tk"); const dot = el("span", "dot"); dot.style.background = TIER[e.tierKey].color;
+    c.append(el("span", "rank", "#" + (i + 1)), dot, el("span", null, e.symbol || "?"), el("span", "k " + e.kind, e.kind), el("span", "ago", e.tierLabel + " · " + ago(e.ts)));
+    c.title = (e.symbol || "?") + " " + e.kind + " " + e.tierLabel + (e.detail ? " — " + e.detail.split(";").map(label).join(", ") : "");
+    c.onclick = () => goToToken(e.tierKey, e.address); box.append(c); return c;
+  });
+  const more = el("button", "tk more", "View all " + all.length); more.onclick = showAllChanges; box.append(more);
+  while (box.scrollWidth > box.clientWidth && items.length) items.pop().remove();
+  if (items.length === all.length) more.textContent = "View list";
+  else more.textContent = "+" + (all.length - items.length) + " more";
+}
+function showAllChanges() {
+  const list = el("div");
+  for (const e of allEvents()) {
+    const r = el("div", "evrow"), dot = el("span", "dot"); dot.style.background = TIER[e.tierKey].color;
+    r.append(dot, el("b", null, e.symbol || "?"), el("span", "k " + e.kind, e.kind), el("span", "m", e.tierLabel), el("span", "m", ago(e.ts) + " ago"),
+      el("span", "m", e.detail ? e.detail.split(";").map(label).join(", ") : ""));
+    r.title = "Show this token"; r.onclick = () => goToToken(e.tierKey, e.address); list.append(r);
+  }
+  openModal("Tier changes · last 7 days", list);
+}
+function renderHead() {
+  const t = S.tiers[tier]; $("title").textContent = t.label; $("subtitle").textContent = TIER[tier].sub;
+  const box = $("stats"); box.replaceChildren();
+  const cnt = (k, v) => results ? tokensOf().filter((x) => res(x)[k] === v).length : null;
+  const ps = cnt("saved", "pass"), pn = cnt("status", "pass");
+  const items = [["Checked", num(t.tokens.length)], ["Listed", num(t.members)], ["Pass", ps == null ? "…" : num(ps)],
+                 ["With your filters", pn == null ? "…" : num(pn), pn == null ? 0 : pn - ps]];
+  for (const [l, v, d] of items) { const s = el("div", "stat"), vv = el("div", "v", v);
+    if (d) vv.append(el("span", "d " + (d > 0 ? "pos" : "neg"), (d > 0 ? "+" : "") + d)); s.append(el("div", "l", l), vv); box.append(s); }
+  $("meta").textContent = t.last_run ? "Updated " + ago(t.last_run) + " ago" : "Not updated yet";
+}
+function renderTf() {
+  const tf = $("tf"); tf.replaceChildren();
+  for (const [k, l] of [["all", "All"], ["pass", "Pass"], ["fail", "Fail"], ["unknown", "Unknown"], ["changed", "Changed"], ["member", "Listed"]]) {
+    const b = el("button", statusFilter === k ? "on" : "", l); b.onclick = () => { statusFilter = k; page = 0; renderTf(); renderTable(); }; tf.append(b);
+  }
+}
+
+// ---- table ------------------------------------------------------------------------
+function filteredRows() {
+  const q = $("search").value.trim().toLowerCase(), cs = cols();
+  const rows = tokensOf().filter((t) => { const r = res(t), m = t.metrics;
+    if (q && !((m.symbol || "") + " " + (m.name || "") + " " + m.address).toLowerCase().includes(q)) return false;
+    if (statusFilter === "changed") return r.status !== r.saved; if (statusFilter === "member") return t.member;
+    return statusFilter === "all" || r.status === statusFilter; });
+  const sc = cs.find((c) => c.key === sortKey) || cs[0], dir = sortKey ? sortDir : 1;
+  return rows.sort((a, b) => { const va = valueOf(sc, a), vb = valueOf(sc, b);
+    if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return (va < vb ? -1 : va > vb ? 1 : 0) * dir; });
+}
+function renderTable() {
+  const cs = cols();
+  $("cols").replaceChildren(...cs.map((c) => { const col = el("col"); col.style.width = c.w + "%"; return col; }));
+  const tr = el("tr");
+  for (const c of cs) { const th = el("th", c.r ? "r" : "", c.label); if (sortKey === c.key) th.append(el("span", "ar", sortDir > 0 ? " ▲" : " ▼"));
+    th.onclick = () => { sortDir = sortKey === c.key ? -sortDir : (["symbol", "status", "why"].includes(c.key) ? 1 : -1); sortKey = c.key; page = 0; renderTable(); }; tr.append(th); }
+  $("thead").replaceChildren(tr);
+  const body = $("tbody");
+  if (!results) { body.replaceChildren(emptyRow(cs.length, "Evaluating…")); $("pager").replaceChildren(); return; }
+  pageSize = Math.max(4, Math.floor(($("twrap").clientHeight - HEAD_H) / ROW_H));
+  const rows = filteredRows(), pages = Math.max(1, Math.ceil(rows.length / pageSize));
+  page = Math.min(page, pages - 1);
+  if (!selected || !tokensOf().some((t) => t.metrics.address === selected)) selected = rows[0] ? rows[0].metrics.address : null;
+  const frag = document.createDocumentFragment();
+  for (const t of rows.slice(page * pageSize, (page + 1) * pageSize)) {
+    const row = el("tr", t.metrics.address === selected ? "sel" : "");
+    row.onclick = () => { selected = t.metrics.address; rightTab = "token"; renderTable(); renderRight(); };
+    for (const c of cs) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : ""));
+      if (c.cell) td.append(c.cell(t, td));
+      else { const v = valueOf(c, t); td.textContent = c.fmt ? c.fmt(v) : (v ?? "–"); const k = c.cls && c.cls(v); if (k) td.classList.add(k); }
+      row.append(td); }
+    frag.append(row);
+  }
+  body.replaceChildren(frag);
+  if (!rows.length) body.append(emptyRow(cs.length, "No tokens match."));
+  renderPager(rows.length, pages);
+}
+function emptyRow(span, text) { const tr = el("tr"), td = el("td", "empty", text); td.colSpan = span; tr.append(td); return tr; }
+function renderPager(total, pages) {
+  const p = $("pager"); p.replaceChildren();
+  p.append(el("span", "info", `${total ? page * pageSize + 1 : 0}–${Math.min(total, (page + 1) * pageSize)} of ${total} tokens`));
+  const btn = (text, target, on = false, disabled = false) => { const b = el("button", on ? "on" : "", text); b.disabled = disabled; b.onclick = () => { page = target; renderTable(); }; return b; };
+  p.append(btn("‹", page - 1, false, page === 0)); let prev = -1;
+  for (const i of [...new Set([0, pages - 1, page - 1, page, page + 1])].filter((i) => i >= 0 && i < pages).sort((a, b) => a - b)) {
+    if (i - prev > 1) p.append(el("span", "gap", "…")); p.append(btn(String(i + 1), i, i === page)); prev = i; }
+  p.append(btn("›", page + 1, false, page >= pages - 1));
+}
+
+// ---- right panel: token -------------------------------------------------------------
+function box(l, v, tip, cls = "") { const b = el("div", "box"); b.title = tip; b.append(el("div", "l", l), el("div", "v " + cls, v)); return b; }
+function mergedChecks(checks) {  // show min/max pairs (Age, Market cap) as one row
+  const out = [];
+  for (const c of checks) {
+    const prev = out[out.length - 1];
+    if (prev && prev.label === c.label && prev.value === c.value && !c.info && !prev.info) {
+      prev.limit = prev.limit + " · " + c.limit; prev.ok = prev.ok === false || c.ok === false ? false : (prev.ok === null || c.ok === null ? null : true);
+    } else out.push({ ...c });
+  }
+  return out;
+}
+function renderToken(body) {
+  const t = tokensOf().find((x) => x.metrics.address === selected);
+  if (!t) { body.append(el("div", "placeholder", "Select a token in the table")); return; }
+  const m = t.metrics, r = res(t), nl = tier === "new_launches";
+  const head = el("div", "tok"), av = el("div", "av", (m.symbol || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
+  av.style.background = TIER[tier].color;
+  const info = el("div"); info.style.minWidth = "0";
+  const nm = el("div", "nm", m.symbol || "?"); const bd = el("span", "badge", TIER[tier].short); bd.style.background = TIER[tier].color; bd.style.color = "#0d0e11"; nm.append(bd);
+  if (t.member) { const s = el("span", "badge", "★ LISTED"); s.style.background = "rgba(242,201,76,.15)"; s.style.color = "var(--gold)"; s.title = "Currently listed in this tier"; nm.append(s); }
+  info.append(nm, el("div", "ds", [m.name, nl ? num(m.age_h, 1) + "h old" : num(m.age_d) + " days old"].filter(Boolean).join(" · ")));
+  head.append(av, info); body.append(head);
+  if (isConcentrated(m)) body.append(el("div", "warnstrip", `⚠ Top wallets hold ${pct(concentration(m))} of supply. Large holders selling can move the price sharply` + (nl ? "." : " (may include team, treasury or exchange wallets).")));
+
+  const links = el("div", "lrow");
+  if (typeof m.url === "string" && m.url.startsWith("https://dexscreener.com/")) { const a = el("a", "lb", "📈 Chart"); a.href = m.url; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a); }
+  if (ADDR.test(m.address)) { const a = el("a", "lb", "🛡 RugCheck"); a.href = "https://rugcheck.xyz/tokens/" + m.address; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a);
+    const c = el("button", "lb", "⧉ Copy CA"); c.title = "Copy contract address: " + m.address;
+    c.onclick = async () => { try { await navigator.clipboard.writeText(m.address); c.textContent = "✓ Copied"; } catch { c.textContent = "Copy failed"; } setTimeout(() => (c.textContent = "⧉ Copy CA"), 1200); };
+    links.append(c); }
+  body.append(links);
+
+  const g = el("div", "grid");
+  if (nl) g.append(box("Liquidity", usd(m.liquidity_usd), EXPLAIN.liquidity), box("Mkt cap", usd(m.market_cap_usd), EXPLAIN.mcap), box("Volume 24h", usd(m.volume_h24_usd), EXPLAIN.volume),
+                   box("Trades 24h", compact(m.txns_h24), EXPLAIN.txns), box("Holders", compact(m.holders), EXPLAIN.holders),
+                   box("Holders / h", signed(m.holder_growth_per_h, 1), EXPLAIN.growth, tone(m.holder_growth_per_h, 1)));
+  else g.append(box("Mkt cap", usd(m.mcap_usd), EXPLAIN.mcap), box("FDV", usd(m.fdv_usd), EXPLAIN.fdv), box("Liquidity", usd(m.liquidity_usd), EXPLAIN.liquidity),
+                box("Volume 24h", usd(m.volume_h24_usd), EXPLAIN.volume), box("Holders", compact(m.holders), EXPLAIN.holders),
+                box("Holders 24h", signed(m.holder_change_24h_pct, 1, "%"), EXPLAIN.growth, tone(m.holder_change_24h_pct, 1)));
+  body.append(g);
+
+  const checks = mergedChecks(r.checks || []), real = checks.filter((c) => !c.info);
+  const okN = real.filter((c) => c.ok === true).length;
+  const sec = el("div", "checks " + r.status), ct = el("div", "ct");
+  ct.append(el("b", null, { pass: "✓ Why it passed", fail: "✕ Why it was filtered out", unknown: "? Decided on the next refresh" }[r.status]),
+            el("span", null, `${okN}/${real.length} checks` + (r.status !== r.saved ? (r.status === "pass" ? " · ▲ with your filters" : " · ▼ with your filters") : "")));
+  sec.append(ct);
+  for (const c of checks) {
+    const row = el("div", "ck" + (c.ok === false && !c.info ? " bad" : ""));
+    const ic = c.info ? ["•", "inf"] : c.ok === true ? ["✓", "ok"] : c.ok === false ? ["✕", "bad"] : ["?", "unk"];
+    const v = el("span", "val", c.value); if (c.limit) v.append(el("small", null, c.limit));
+    row.append(el("span", "ic " + ic[1], ic[0]), el("span", "lb2", c.label), v);
+    row.title = (EXPLAIN[CHECK_EXPLAIN[c.id]] || "") + (c.info ? "\n(Shown for information — not a filter for this tier.)" : "");
+    sec.append(row);
+  }
+  body.append(sec);
+  const foot = el("div", "foot"), gl = el("button", "linkbtn", "ⓘ What do these numbers mean?"); gl.onclick = showGlossary;
+  foot.append(gl, el("span", null, "Not financial advice")); body.append(foot);
+}
+
+// ---- right panel: filters -------------------------------------------------------------
+function hintFor(f) {
+  const t = S.tiers[tier].typical[f.path], parts = [];
+  if (t) parts.push(`typical ${unitFmt[t.unit](t.p25)}–${unitFmt[t.unit](t.p75)}`);
+  return parts.join("");
+}
+function isAdvanced(f) { return f.label.startsWith("Post:") || /scope_min_mcap_usd|leave_after_hours/.test(f.path); }
+function activePreset() {
+  const pr = S.tiers[tier].presets;
+  return Object.keys(pr).find((name) => Object.entries(pr[name]).every(([p, v]) => String(edited[tier][p]) === String(v))) || null;
+}
+function renderFilters(body) {
+  const t = S.tiers[tier], isPublic = S.mode === "public";
+  const pre = el("div", "presets"), act = activePreset();
+  for (const name of ["strict", "balanced", "loose"]) if (t.presets[name]) {
+    const b = el("button", name === act ? "on" : "", name[0].toUpperCase() + name.slice(1)); b.title = PRESET_TEXT[name];
+    b.onclick = () => { Object.assign(edited[tier], t.presets[name]); renderRight(); changed(); }; pre.append(b);
+  }
+  body.append(pre, el("div", "pdesc", act ? PRESET_TEXT[act] + " Presets are starting points until the track record shows what holds up." : "Custom values — pick a preset to start over."));
+
+  const fields = el("div", "fields");
+  const groups = [["Filters", (f) => f.kind !== "bool" && !isAdvanced(f)], ["Token controls", (f) => f.kind === "bool"],
+                  ["Advanced", (f) => isAdvanced(f)]];
+  for (const [g, test] of groups) {
+    const list = t.fields.filter(test); if (!list.length) continue;
+    if (g === "Advanced") {
+      if (isPublic) continue;
+      const h = el("div", "group toggle", (showAdvanced ? "▾ " : "▸ ") + "Advanced · daily post selection, grace periods");
+      h.onclick = () => { showAdvanced = !showAdvanced; renderRight(); }; fields.append(h); if (!showAdvanced) continue;
+    } else fields.append(el("div", "group", g));
+    for (const f of list) fields.append(fieldEl(f));
+  }
+  const acts = el("div", "factions"), reset = el("button", null, isPublic ? "Back to default" : "Reset");
+  reset.onclick = () => { edited[tier] = { ...t.values }; renderRight(); changed(); };
+  acts.append(reset);
+  if (!isPublic) { const save = el("button", "save", "Save to config"); acts.append(save);
+    save.onclick = async () => { try { const j = await api("/api/config", { tier, values: edited[tier] }); t.values = j.values; edited[tier] = { ...j.values };
+        renderRight(); setMsg("Saved — used from the next refresh.", "ok"); evaluate(); } catch (e) { setMsg(e.message, "err"); } }; }
+  const msg = el("div", "fmsg"); msg.id = "fmsg";
+  body.append(fields, acts, msg); setMsg(""); markChanged();
+}
+function fieldEl(f) {
+  const cur = edited[tier][f.path], wrap = el("div", "field" + (f.kind === "bool" ? " bool" : "")); wrap.dataset.path = f.path;
+  const id = "f_" + f.path.replaceAll(".", "_"), input = el("input"); input.id = id;
+  const lab = el("label"); lab.htmlFor = id; lab.append(el("span", null, f.label.replace(/^Post: /, "")));
+  if (f.help) { const q = el("span", "q", "?"); q.title = f.help; lab.append(q); }
+  const hint = el("div", "hint"); hint.dataset.path = f.path;
+  if (f.kind === "bool") { input.type = "checkbox"; input.checked = !!cur; input.onchange = () => { edited[tier][f.path] = input.checked; changed(); }; wrap.append(input, lab, hint); }
+  else { input.type = f.kind === "num_or_null" ? "text" : "number"; input.min = "0"; input.step = "any"; input.value = cur === null ? "" : cur;
+    if (f.kind === "num_or_null") input.placeholder = "no limit";
+    input.oninput = () => { edited[tier][f.path] = input.value === "" ? null : input.value; changed(); }; wrap.append(lab, input, hint); }
+  fillHint(hint, f); return wrap;
+}
+function fillHint(hint, f) {
+  hint.replaceChildren(); const h = hintFor(f), rm = impact[f.path];
+  if (h) hint.append(h); if (rm !== undefined) { if (h) hint.append(" · "); hint.append(el("span", rm ? "rm" : "rm0", rm ? `removes ${rm}` : "removes 0")); }
+  hint.title = "Typical = middle half of the tokens checked in the last refresh. Removes = tokens that fail this filter.";
+}
+function refreshHints() { const fs = S.tiers[tier].fields; document.querySelectorAll(".field .hint").forEach((h) => { const f = fs.find((x) => x.path === h.dataset.path); if (f) fillHint(h, f); }); }
+function markChanged() { document.querySelectorAll(".field").forEach((w) => { const p = w.dataset.path; w.classList.toggle("changed", String(edited[tier][p]) !== String(S.tiers[tier].values[p])); });
+  const act = activePreset(); document.querySelectorAll(".presets button").forEach((b) => b.classList.toggle("on", b.textContent.toLowerCase() === act)); }
+function changed() { markChanged(); setMsg(""); page = 0; clearTimeout(evalTimer); evalTimer = setTimeout(evaluate, 250); }
+function setMsg(text, cls = "") { const m = $("fmsg"); if (!m) return; m.className = "fmsg " + cls;
+  m.textContent = text || (S.mode === "public" ? "Try your own filters — the table updates instantly." : "Edits preview instantly · Save applies them from the next refresh."); }
+
+function renderRight() {
+  $("tabToken").classList.toggle("on", rightTab === "token"); $("tabFilters").classList.toggle("on", rightTab === "filters");
+  const body = $("rbody"); body.replaceChildren();
+  if (rightTab === "filters") renderFilters(body); else if (results) renderToken(body); else body.append(el("div", "placeholder", "Evaluating…"));
+}
+$("tabToken").onclick = () => { rightTab = "token"; renderRight(); };
+$("tabFilters").onclick = () => { rightTab = "filters"; renderRight(); };
+
+function renderRun() {
+  if (S.mode === "public") return;
+  const r = S.run; $("runBtn").disabled = r.running; $("runTxt").textContent = r.running ? "Refreshing…" : "Refresh " + S.tiers[tier].label;
+  const st = $("runStatus"); st.className = "runstat " + (r.running ? "busy" : r.exit_code === 0 ? "ok" : r.exit_code ? "err" : "");
+  st.textContent = r.running ? "● refreshing" : r.exit_code === 0 ? "● last refresh ok" : r.exit_code ? "● last refresh failed" : "idle"; st.title = r.tail || "";
+}
+function renderAll() { renderNav(); renderTicker(); renderHead(); renderTf(); renderTable(); renderRight(); renderRun(); }
+
+// ---- actions --------------------------------------------------------------------------
+async function evaluate() {
+  const forTier = tier;
+  try { const j = await api("/api/evaluate", { tier: forTier, values: edited[forTier] }); if (forTier !== tier) return;
+    results = j.results; impact = j.impact || {}; applyPending(); renderHead(); renderTable();
+    if (rightTab === "token") renderRight(); else { refreshHints(); markChanged(); } }
+  catch (e) { setMsg(e.message, "err"); }
+}
+$("search").oninput = () => { page = 0; renderTable(); };
+$("runBtn").onclick = async () => { try { const j = await api("/api/run", { tiers: [tier] }); S.run = j.run; renderRun(); pollRun(); } catch (e) { $("runStatus").textContent = e.message; } };
+async function pollRun() { S.run = await api("/api/run"); renderRun(); if (S.run.running) setTimeout(pollRun, 3000); else load(); }
+new ResizeObserver(() => { if (S && results) { renderTable(); renderTicker(); } }).observe($("twrap"));
+
+async function load() {
+  S = await api("/api/state");
+  if (!S.mode) {  // page is newer than the running server: say so instead of breaking silently
+    document.body.prepend(el("div", "fmsg err", "The dashboard server is running old code — stop it (Ctrl+C) and start it again with: python sieve.py web"));
+    S.mode = "admin"; S.warn_pct = S.warn_pct ?? 50; S.disclaimer = S.disclaimer || "";
+    for (const t of Object.values(S.tiers)) { t.presets = t.presets || {}; t.typical = t.typical || {}; }
+  }
+  document.body.classList.toggle("public", S.mode === "public");
+  for (const [k, t] of Object.entries(S.tiers)) if (!edited[k]) edited[k] = { ...t.values };
+  results = null; renderAll(); evaluate(); if (S.run.running) pollRun();
+}
+load().catch((e) => { document.body.prepend(el("div", "fmsg err", "Failed to load: " + e.message)); });
+</script>
+</body>
+</html>

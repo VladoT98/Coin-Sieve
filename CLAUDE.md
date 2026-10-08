@@ -34,6 +34,9 @@ A Solana token screener product, aiming for revenue:
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).
 - `python sieve.py telegram-check` — one test line to the TEST chat.
+- `python sieve.py web --public` — same site in read-only public mode: no Refresh/Save/Advanced; visitors can still preview their own filters (nothing is saved). Server returns 403 for save/run in public mode.
+- Dashboard design = DexScreener style (user's choice 2026-10-08): sidebar tiers, tier-change ticker (+N more → full list), dense paged table, right panel Token (stat boxes with plain-language tooltips, ✓/✕ checklist "why it passed/failed", glossary) / Filters (Strict/Balanced/Loose presets from config `presets`, per-filter "typical values" + "removes N"). ⚠ badge when top wallets ≥ `publishing.concentration_warning_pct` (user chose warning-only for TRUMP-type tokens, no exclusion). `tests/test_dashboard_logic.py` enforces banned words on the site text.
+- `python sieve.py web [--port 8765] [--no-browser]` — private dashboard on 127.0.0.1: 3 tier tabs, every evaluated token + reasons, edit filters with instant what-if preview (`whatif.py`), save to config.yaml (`config_edit.py` keeps comments, only touches changed values), run a tier, tier changes of the last 7 days. Write endpoints need header `X-Coin-Sieve: 1`. Stdlib only.
 - `python sieve.py track-record` — what happened to tier entries at 24h / 72h / 7d (every `run` records due checkpoints).
 - Cadence (decided 2026-10-08, implement in Stage 9): `run --tiers new_launches` every 15 min; `run --tiers emerging,established` hourly; `digest daily` once a day; `digest weekly` once a week; `digest alerts` hourly after the Jupiter tiers run.
 - `python -m unittest discover tests` — unit tests (no network).

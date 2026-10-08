@@ -217,6 +217,15 @@ class Store:
         r = self.db.execute("SELECT stats FROM run_stats WHERE tier = ? ORDER BY ts DESC LIMIT 1", (tier,)).fetchone()
         return json.loads(r[0]) if r else None
 
+    def latest_run_ts(self, tier):
+        return self.db.execute("SELECT MAX(ts) FROM run_stats WHERE tier = ?", (tier,)).fetchone()[0]
+
+    def latest_since(self, tier, since):
+        """Every token evaluated for `tier` at or after `since` (i.e. in the latest run)."""
+        rows = self.db.execute("SELECT * FROM latest_metrics WHERE tier = ? AND ts >= ?", (tier, since))
+        return [{"ts": r["ts"], "metrics": json.loads(r["metrics"]), "reasons": json.loads(r["reasons"])}
+                for r in rows]
+
     def tokens_seen_since(self, since):
         return self.db.execute("SELECT COUNT(*) FROM tokens WHERE first_seen >= ?", (since,)).fetchone()[0]
 

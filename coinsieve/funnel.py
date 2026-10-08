@@ -8,8 +8,10 @@ REASON_LABELS = {
     "low_liquidity": "low liquidity", "no_liquidity_data": "no liquidity data", "bonding_curve": "still on launchpad",
     "low_volume": "low volume", "few_txns": "few trades", "few_socials": "no socials listed",
     "no_pair_data": "no market data", "serial_creator": "serial creator", "jupiter_incomplete": "incomplete data",
-    "jupiter_failed": "data unavailable", "rugcheck_failed": "safety check unavailable",
-    "rugcheck_incomplete": "safety check incomplete", "rugged": "marked rugged",
+    "jupiter_failed": "data unavailable", "rugcheck_failed": "RugCheck unavailable",
+    "rugcheck_incomplete": "RugCheck incomplete", "rugged": "marked rugged",
+    "outside_age_window": "outside age window", "outside_age_range": "outside age range",
+    "not_checked_yet": "waiting for next run",
     "mint_authority_active": "mint authority active", "freeze_authority_active": "freeze authority active",
     "lp_not_locked": "liquidity not locked", "top1_holder": "one wallet holds too much",
     "top10_holders": "top wallets hold too much", "risk_danger": "danger flag",
@@ -44,6 +46,6 @@ def stages(tier, s, shown):
     """[(label, count)] for the card's funnel bars."""
     if tier == "new_launches":
         return [("checked (6-48h old)", s["evaluated"]), ("passed market filters", s["market_passed"]),
-                ("passed safety checks", s["members"]), ("shown today", shown)]
+                ("passed creator + RugCheck", s["members"]), ("shown today", shown)]
     return [("tracked", s["tracked"]), ("in age & size range", s["evaluated"]),
             ("passed all filters", s["members"]), ("shown today", shown)]
