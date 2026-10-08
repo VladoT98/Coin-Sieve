@@ -49,6 +49,38 @@ def print_tier_run(run_id, run, cfg):
             print(f"  {code:<22}{n}")
 
 
+def fmt_m(v):
+    return "-" if v is None else f"{v / 1e6:,.1f}M"
+
+
+def print_jupiter_tier_run(run, show_rejects=10):
+    members = [x for x in run.results if not x[1]]
+    rejects = sorted((x for x in run.results if x[1]), key=lambda x: -(x[0]["mcap_usd"] or 0))
+    print(f"\nTier: {run.tier}")
+    if run.outage:
+        print("  Jupiter returned no data (likely outage). Evaluation skipped; membership unchanged.")
+        return
+    print(f"  universe: {run.counts['universe']} | in scope (evaluated): {len(run.results)}"
+          f" | members: {len(members)}")
+    hdr = (f"{'SYMBOL':<11}{'AGE_D':>7}{'MCAP':>10}{'LIQ':>9}{'VOL24':>9}{'HOLDERS':>10}"
+           f"{'H24%':>7}{'ORG':>6}  RESULT")
+    rows = sorted(members, key=lambda x: -(x[0]["mcap_usd"] or 0)) + rejects[:show_rejects]
+    if rows:
+        print(hdr)
+        print("-" * len(hdr))
+    for m, reasons in rows:
+        hc = m["holder_change_24h_pct"]
+        verdict = "MEMBER" if not reasons else "; ".join(r.split(":")[0] for r in reasons)
+        print(f"{(m['symbol'] or '?')[:10]:<11}{m['age_d'] or 0:>7.0f}{fmt_m(m['mcap_usd']):>10}"
+              f"{fmt_m(m['liquidity_usd']):>9}{fmt_m(m['volume_h24_usd']):>9}{m['holders'] or 0:>10,}"
+              f"{'-' if hc is None else f'{hc:+.1f}':>7}{m['organic_score'] or 0:>6.0f}  {verdict}")
+    if len(rejects) > show_rejects:
+        print(f"  ... {len(rejects) - show_rejects} more rejected (see logs)")
+    tally = Counter(r.split(":")[0] for _, reasons in run.results for r in reasons)
+    if tally:
+        print("  Rejection reasons: " + ", ".join(f"{k} {n}" for k, n in tally.most_common()))
+
+
 def print_events(events, members_now):
     print(f"\nTier changes this run: {len(events)} | current members: "
           + ", ".join(f"{t}={n}" for t, n in members_now.items()))

@@ -7,6 +7,51 @@ chain: solana
 tiers:
   new_launches:
     leave_after_hours: 2    # a member must fail continuously this long before a "left" event
+  # Emerging/Established: Jupiter data. Scope = in age range AND mcap >= scope_min_mcap_usd
+  # (only in-scope tokens are evaluated + logged). All values are starting guesses.
+  emerging:
+    leave_after_hours: 12
+    min_age_days: 7
+    max_age_days: 180
+    scope_min_mcap_usd: 500000
+    min_mcap_usd: 1000000
+    max_mcap_usd: 50000000
+    min_liquidity_usd: 250000
+    min_volume_h24_usd: 100000
+    min_holders: 5000
+    min_organic_score: 50          # Jupiter organicScore 0-100 (share of non-bot activity)
+    require_mint_authority_disabled: true
+    require_freeze_authority_disabled: true
+    max_top_holders_pct: 30        # Jupiter audit.topHoldersPercentage
+  established:
+    leave_after_hours: 24
+    min_age_days: 365
+    max_age_days: null
+    scope_min_mcap_usd: 100000000
+    min_mcap_usd: 200000000
+    max_mcap_usd: null
+    min_liquidity_usd: 2000000
+    min_volume_h24_usd: 1000000
+    min_holders: 20000
+    min_organic_score: 50
+    require_mint_authority_disabled: false   # shown as a fact, not required, for mature tokens
+    require_freeze_authority_disabled: false
+    max_top_holders_pct: null
+
+jupiter:
+  base_url: https://lite-api.jup.ag/tokens/v2
+  universe:                      # token lists unioned each run (+ every token ever in a tier)
+    - tag?query=verified
+    - toporganicscore/24h?limit=100
+    - toptraded/24h?limit=100
+  # Not Solana-native products: stablecoins, staking/yield wrappers, tokenised stocks/RWA.
+  exclude_tags: [stable, lst, yield, yb, rwa, stocks, xstocks, equities, prestocks, ondo, tessera, jup-lend-earn]
+  exclude_mints:
+    - So11111111111111111111111111111111111111112    # SOL (base asset)
+    - cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij    # cbBTC (wrapped)
+    - 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh   # WBTC (wrapped)
+    - 5XZw2LKTyrfvfiskJ78AMpackRjPcyCif1WhUsPDuVqQ   # WBTC (wrapped)
+    - 27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4   # JLP (Jupiter liquidity-pool basket)
 graduation:                 # "graduated" event when a token enters `to` after being in `from`
   from: new_launches
   to: emerging
@@ -67,6 +112,7 @@ api:
   dexscreener_min_interval_s: 0.25   # pair endpoints allow 300 req/min; feeds 60 req/min
   rugcheck_base: https://api.rugcheck.xyz/v1
   rugcheck_min_interval_s: 1.0       # header X-Rate-Limit-Limit: 15; 1/s gave no 429s
+  jupiter_min_interval_s: 1.0
 
 storage:
   db_path: data/coinsieve.db

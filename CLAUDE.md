@@ -31,7 +31,7 @@ A Solana token screener product, aiming for revenue:
 - Dry-run mode by default: print to console, only post to Telegram when --post is passed. Post to the TEST channel until the user approves switching to the main channel.
 
 ## Commands
-- `python sieve.py [run] [--post]` — evaluate tiers, update membership, dry run unless `--post`.
+- `python sieve.py [run] [--post] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, dry run unless `--post`.
 - `python sieve.py telegram-check` — one test line to the TEST chat.
 - `python -m unittest discover tests` — unit tests (no network).
 
@@ -61,6 +61,15 @@ A Solana token screener product, aiming for revenue:
 - `markets[].lp.lpLockedPct/lpLockedUSD/baseUSD/quoteUSD`. pump_fun (curve) and pump_fun_amm report 100% locked; third-party Meteora/Orca pools report 0% → locked share computed across ALL markets.
 - `topHolders[]` includes pool vaults (4–96%). Excluded via market pubkey, `liquidityA/B` (vault addresses), `liquidityA/BAccount.owner`, or `knownAccounts` type AMM. Unidentified holders count.
 - Data can be inconsistent (one token's top-10 summed to 115%).
+
+## Verified API facts (Jupiter Tokens v2, 2026-10-08) — source for Emerging + Established
+- `https://lite-api.jup.ag/tokens/v2` (no key; `api.jup.ag` also answered without a key). No rate-limit headers seen.
+- `tag?query=verified` → ~3,900 full token objects (~5 MB). `toporganicscore/24h`, `toptraded/24h` take `limit` ≤ 100. `search?query=a,b,c` → max 100 tokens per call.
+- Token-level fields: `mcap`, `fdv`, `liquidity`, `holderCount`, `organicScore` (0–100), `isVerified`, `tags`, `firstPool.createdAt` (token age; missing on ~14%), `audit.{mintAuthorityDisabled, freezeAuthorityDisabled, topHoldersPercentage, devMints, devBalancePercentage}` — audit keys are OMITTED when false/unknown, `stats24h.{holderChange (%), buyVolume, sellVolume, buyOrganicVolume, sellOrganicVolume, numTraders}`.
+- Not Solana-native products are tagged: `stable`, `lst`, `yield`, `yb`, `rwa`, `stocks`, `xstocks`… (tokenised stocks also end in "x"). SOL/cbBTC/WBTC excluded by mint in config.
+- Holder counts differ a lot from RugCheck's (MINER: Jupiter 906 vs RugCheck 3,175) — never mix sources within a metric.
+- `audit.devMints` exposes serial launchers (one New Launch's creator had minted 346 tokens) — candidate New Launches signal.
+- Never show the tag name "verified" in posts/site (banned word).
 
 ## Telegram (Stage 3)
 - Error shape verified: `{"ok": false, "error_code": 401, "description": "Unauthorized"}`. Success verified 2026-10-08: `result.message_id` (bot @coinsieve_bot → private TEST channel "CS Test").

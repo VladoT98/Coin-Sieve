@@ -18,12 +18,13 @@ from dotenv import dotenv_values
 from coinsieve import membership
 from coinsieve.dexscreener import DexScreener
 from coinsieve.evallog import EvalLog
+from coinsieve.jupiter import Jupiter
 from coinsieve.ranking import sort_key
-from coinsieve.report import print_events, print_tier_run
+from coinsieve.report import print_events, print_jupiter_tier_run, print_tier_run
 from coinsieve.rugcheck import RugCheck
 from coinsieve.store import Store
 from coinsieve.telegram import Telegram, TelegramError
-from coinsieve.tiers import new_launches
+from coinsieve.tiers import jupiter_tiers, new_launches
 
 log = logging.getLogger("sieve")
 
@@ -39,26 +40,39 @@ def setup_logging(log_dir):
     logging.basicConfig(level=logging.INFO, handlers=[file_h, console_h])
 
 
-def cmd_run(cfg, chat, client):
+ALL_TIERS = ("new_launches", "emerging", "established")
+
+
+def cmd_run(cfg, chat, client, tiers):
     now = time.time()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     api = cfg["api"]
-    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
-    rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
     store = Store(cfg["storage"]["db_path"])
     evlog = EvalLog(cfg["storage"]["log_dir"], run_id)
 
-    runs = [new_launches.evaluate_tier(cfg, dex, rug, store, evlog, now)]
+    runs = []
+    if "new_launches" in tiers:
+        dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
+        rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
+        runs.append(new_launches.evaluate_tier(cfg, dex, rug, store, evlog, now))
+    jup_tiers = [t for t in jupiter_tiers.TIERS if t in tiers]
+    if jup_tiers:
+        jup = Jupiter(cfg["jupiter"]["base_url"], api["timeout_s"], api["jupiter_min_interval_s"], api["retries"])
+        runs += jupiter_tiers.evaluate_tiers(cfg, jup, store, evlog, now, jup_tiers)
+
     events = []
     for run in runs:
         events += membership.update(store, run, now, cfg["tiers"][run.tier], cfg.get("graduation"))
 
     for run in runs:
-        print_tier_run(run_id, run, cfg)
-    print_events(events, {r.tier: len(store.current_members(r.tier)) for r in runs})
+        if run.tier == "new_launches":
+            print_tier_run(run_id, run, cfg)
+        else:
+            print_jupiter_tier_run(run)
+    print_events(events, {t: len(store.current_members(t)) for t in ALL_TIERS})
 
-    nl = runs[0]
-    if not nl.outage:
+    nl = next((r for r in runs if r.tier == "new_launches"), None)
+    if nl and not nl.outage:
         already = store.posted_to(chat)
         eligible = sorted((m for m, _ in nl.results if m["address"] in nl.texts and m["address"] not in already),
                           key=sort_key)
@@ -113,10 +127,16 @@ def main():
     sub = parser.add_subparsers(dest="command")
     p_run = sub.add_parser("run", help="evaluate tiers (default command)")
     p_run.add_argument("--post", action="store_true", help="post to the TEST chat (default: dry run)")
+    p_run.add_argument("--tiers", default=",".join(ALL_TIERS),
+                       help=f"comma-separated subset of {','.join(ALL_TIERS)} (default: all)")
     sub.add_parser("telegram-check", help="send one test line to the TEST chat")
     args = parser.parse_args()
     command = args.command or "run"
     post = getattr(args, "post", False)
+    tiers = [t.strip() for t in getattr(args, "tiers", ",".join(ALL_TIERS)).split(",") if t.strip()]
+    unknown = set(tiers) - set(ALL_TIERS)
+    if unknown:
+        sys.exit(f"Unknown tier(s): {', '.join(sorted(unknown))}")
 
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # token names contain emoji
     with open(args.config, encoding="utf-8") as f:
@@ -136,7 +156,7 @@ def main():
     if command == "telegram-check":
         cmd_telegram_check(client, chat)
     else:
-        cmd_run(cfg, chat, client)
+        cmd_run(cfg, chat, client, tiers)
 
 
 if __name__ == "__main__":

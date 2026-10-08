@@ -46,6 +46,13 @@ class MembershipTest(unittest.TestCase):
         events = membership.update(self.store, tier_run("new_launches", aged_out=["a"]), 0.5 * H, CFG, GRAD)
         self.assertEqual([(e["kind"], e["detail"]) for e in events], [("left", "aged_out")])
 
+    def test_config_exclusion_leaves_immediately(self):
+        self.update(tier_run("established", passing=["a"]), 0)
+        run = tier_run("established")
+        run.results = [({"address": "a", "symbol": "A", "tier_member": False}, ["excluded_mint: x"])]
+        events = membership.update(self.store, run, 0.1 * H, CFG, GRAD)
+        self.assertEqual([(e["kind"], e["detail"]) for e in events], [("left", "excluded_mint: x")])
+
     def test_outage_changes_nothing(self):
         self.update(tier_run("new_launches", passing=["a"]), 0)
         self.assertEqual(self.update(tier_run("new_launches", outage=True), 10), [])

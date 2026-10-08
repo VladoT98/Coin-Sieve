@@ -149,6 +149,10 @@ class Store:
         return {r["address"]: r for r in self.db.execute(
             "SELECT * FROM tier_members WHERE tier = ? AND left_at IS NULL", (tier,))}
 
+    def all_tracked(self):
+        """Every address that has ever been a member of any tier."""
+        return [r[0] for r in self.db.execute("SELECT DISTINCT address FROM tier_members")]
+
     def was_ever_member(self, address, tier):
         return self.db.execute("SELECT 1 FROM tier_members WHERE address = ? AND tier = ?",
                                (address, tier)).fetchone() is not None

@@ -6,7 +6,7 @@ def update(store, run, now, tier_cfg, graduation):
 
     - entered:   passing now, not a current member.
     - left:      current member that hasn't passed for >= leave_after_hours (hysteresis),
-                 or aged out of the tier's age range (immediate, detail says so).
+                 or aged out of the tier's age range / excluded by config (both immediate).
     - graduated: entered `graduation.to` after ever being a member of `graduation.from`.
     Skipped entirely on an outage run: no data is not evidence of failing.
     """
@@ -35,10 +35,13 @@ def update(store, run, now, tier_cfg, graduation):
     for addr, row in members.items():
         if addr in passing:
             continue
+        reasons = by_addr.get(addr, (None, ["not evaluated this run"]))[1]
+        excluded = [r for r in reasons if r.startswith("excluded_")]
         if addr in run.aged_out:
             detail = "aged_out"
+        elif excluded:  # deliberate config exclusion: no grace period
+            detail = "; ".join(excluded)
         elif now - row["last_pass_at"] >= leave_s:
-            reasons = by_addr.get(addr, (None, ["not evaluated this run"]))[1]
             detail = "; ".join(reasons) or "failed tier criteria"
         else:
             continue  # still inside the grace period
