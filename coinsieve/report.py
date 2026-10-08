@@ -23,7 +23,7 @@ def print_tier_run(run_id, run, cfg):
               " Evaluation skipped; nothing logged as rejected; membership unchanged.")
         return
     print(f"  in age window: {len(results)} | passed hard filters: {hard_passed}"
-          f" | passed RugCheck (tier members): {members} | postable: {len(run.texts)}\n")
+          f" | tier members: {members} | postable: {sum(1 for m, _ in results if m.get('postable'))}\n")
     if not results:
         return
 

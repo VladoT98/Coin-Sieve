@@ -11,7 +11,6 @@ class TierRun:
     new: int = 0                                     # newly discovered tokens
     outage: bool = False                             # data source failed -> skip membership changes
     aged_out: set = field(default_factory=set)       # addresses that left the tier's age range this run
-    texts: dict = field(default_factory=dict)        # address -> post text, for postable tokens
 
     def passing(self):
         """Addresses that are tier members this run."""

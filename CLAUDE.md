@@ -31,8 +31,10 @@ A Solana token screener product, aiming for revenue:
 - Dry-run mode by default: print to console, only post to Telegram when --post is passed. Post to the TEST channel until the user approves switching to the main channel.
 
 ## Commands
-- `python sieve.py [run] [--post] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, dry run unless `--post`.
+- `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
+- `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).
 - `python sieve.py telegram-check` — one test line to the TEST chat.
+- Cadence (decided 2026-10-08, implement in Stage 9): `run --tiers new_launches` every 15 min; `run --tiers emerging,established` hourly; `digest daily` once a day; `digest weekly` once a week; `digest alerts` hourly after the Jupiter tiers run.
 - `python -m unittest discover tests` — unit tests (no network).
 
 ## Build order (stop after each stage for review; commit only after approval)
@@ -67,7 +69,7 @@ A Solana token screener product, aiming for revenue:
 - `tag?query=verified` → ~3,900 full token objects (~5 MB). `toporganicscore/24h`, `toptraded/24h` take `limit` ≤ 100. `search?query=a,b,c` → max 100 tokens per call.
 - Token-level fields: `mcap`, `fdv`, `liquidity`, `holderCount`, `organicScore` (0–100), `isVerified`, `tags`, `firstPool.createdAt` (token age; missing on ~14%), `audit.{mintAuthorityDisabled, freezeAuthorityDisabled, topHoldersPercentage, devMints, devBalancePercentage}` — audit keys are OMITTED when false/unknown, `stats24h.{holderChange (%), buyVolume, sellVolume, buyOrganicVolume, sellOrganicVolume, numTraders}`.
 - Not Solana-native products are tagged: `stable`, `lst`, `yield`, `yb`, `rwa`, `stocks`, `xstocks`… (tokenised stocks also end in "x"). SOL/cbBTC/WBTC excluded by mint in config.
-- Holder counts differ a lot from RugCheck's (MINER: Jupiter 906 vs RugCheck 3,175) — never mix sources within a metric.
+- Holder counts: verified against the chain 2026-10-08 (getProgramAccounts, balance > 0): MINER on-chain 912 / Jupiter 915 / RugCheck 3,151; TON618 1,124 / 1,126 / 3,755; SI276 1,207 / 1,208 / 3,190. **Jupiter `holderCount` = real holders. RugCheck `totalHolders` = ALL token accounts incl. emptied ones — never use it as holders.** All tiers take holders from Jupiter; snapshots carry `source`.
 - `audit.devMints` exposes serial launchers (one New Launch's creator had minted 346 tokens) — candidate New Launches signal.
 - Never show the tag name "verified" in posts/site (banned word).
 
@@ -77,4 +79,5 @@ A Solana token screener product, aiming for revenue:
 - `posts` / `zero_notices` are keyed per chat, so TEST posts never block the main channel.
 - Posts are plain text (no parse_mode) so token names need no escaping. Bot token is redacted from all error strings.
 - Banned-word check runs on post prose only (not addresses/URLs — base58 can contain "gem"/"buy" by chance).
-- A token is postable only with ≥ `ranking.min_history_hours` of RugCheck holder snapshots, so it must pass on several runs.
+- A token is postable only with ≥ `ranking.min_history_hours` of Jupiter holder snapshots, so it must pass on several runs.
+- Digests (Stage 6): `digest.py` builds texts; names/symbols go through `sanitize.clean_text` and are skipped if they hit `banned_words` or `blocked_words`. A tier's first hour of events (`bootstrap_hours`) and config exclusions (`excluded_*`) are never published.

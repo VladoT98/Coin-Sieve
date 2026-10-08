@@ -76,6 +76,7 @@ filters:
   min_volume_h24_usd: 50000  # volume.h24
   min_txns_h24: 300          # txns.h24.buys + txns.h24.sells
   min_socials: 1             # entries in info.socials (twitter/telegram/...)
+  max_dev_mints: 3           # Jupiter audit.devMints: tokens launched by the same creator (one had 346)
 
 launchpad:
   # dexIds seen in live data as pre-migration bonding curves (they have no `liquidity` field).
@@ -99,10 +100,19 @@ ranking:
   min_history_hours: 1.0          # need RugCheck snapshots spanning >= this before a token is postable
   min_holder_growth_per_hour: 0   # declining holder count -> not posted
 
-posting:
-  max_posts_per_day: 5            # UTC day, counted from the posts table
-  post_zero_summary: false        # send one "0 passed" line when nothing is postable (max once/day)
-  banned_words: [safe, gem, verified, buy]   # substring match on post prose; hit = token skipped
+publishing:                       # Telegram digests (and later the website)
+  daily_max_tokens: 5             # New Launches per daily digest; a token is never listed twice per chat
+  daily_max_metrics_age_minutes: 60   # skip tokens whose latest evaluation is older (stale data)
+  post_zero_summary: false        # daily digest says "0 passed" instead of sending nothing
+  alerts_lookback_hours: 24       # Established alerts consider events this recent
+  bootstrap_hours: 1              # events within this long after a tier's first run = initial fill, never posted
+  site_url: ""                    # added to every post once the website exists (Stage 8)
+  max_symbol_len: 12
+  max_name_len: 32
+  banned_words: [safe, gem, verified, buy]   # never in our wording; a token NAME containing one is skipped
+  # Names containing these are never published (substring, case-insensitive). Edit freely —
+  # avoid short words that sit inside innocent ones (e.g. "rape" in "grape", "cum" in "document").
+  blocked_words: [fuck, shit, pussy, cunt, nigg, fagg, porn, penis, vagina, boob, buttock, hitler, nazi]
   disclaimer: "Not financial advice. Passing the filter is not a recommendation."
 
 api:

@@ -1,14 +1,13 @@
-"""New Launches tier: tokens 6-48h old that pass hard filters + RugCheck.
+"""New Launches tier: tokens 6-48h old that pass hard filters + Jupiter checks + RugCheck.
 
-Membership = passed hard filters and RugCheck. Ranking gates (history, holder growth,
-vol/liq ratio) only decide what gets posted, not membership.
+Membership = passed all of those. Ranking gates (history, holder growth, vol/liq ratio)
+only decide what is postable in the daily digest, not membership.
 """
 import logging
 
 from coinsieve.filters import evaluate, pair_metrics
 from coinsieve.ranking import rank_gate
 from coinsieve.rugcheck import evaluate_report
-from coinsieve.telegram import banned_hits, compose_post
 from coinsieve.tiers import TierRun
 
 log = logging.getLogger(__name__)
@@ -82,7 +81,7 @@ def age_gate(store, evlog, cfg, now, run):
     return in_window
 
 
-def evaluate_tier(cfg, dex, rug, store, evlog, now):
+def evaluate_tier(cfg, dex, rug, jup, store, evlog, now):
     run = TierRun(TIER)
     chain = cfg["chain"]
     bonding_ids = set(cfg["launchpad"]["bonding_curve_dex_ids"])
@@ -100,6 +99,7 @@ def evaluate_tier(cfg, dex, rug, store, evlog, now):
         run.outage = True
         return run
 
+    evaluated = []
     for row in in_window:
         addr, pair = row["address"], pairs.get(row["address"])
         if pair is None:
@@ -108,36 +108,62 @@ def evaluate_tier(cfg, dex, rug, store, evlog, now):
             metrics = pair_metrics(pair, row["launch_ts"], now, bonding_ids)
             reasons = evaluate(metrics, cfg["filters"])
         metrics["passed_hard_filters"] = not reasons
+        evaluated.append((row, metrics, reasons))
+
+    # Jupiter (one batch call): real holder count (matches on-chain; RugCheck's counts emptied
+    # accounts too) + creator launch count. Missing data = reject, like an incomplete RugCheck.
+    passers = [m["address"] for _, m, r in evaluated if not r]
+    try:
+        jup_data = {t["id"]: t for t in jup.search(passers)} if passers else {}
+    except Exception as e:
+        log.warning("jupiter search failed: %s", e)
+        jup_data = None
+
+    for row, metrics, reasons in evaluated:
+        addr = metrics["address"]
         if not reasons:
+            reasons += jupiter_checks(metrics, jup_data, cfg["filters"])
+        if not reasons:
+            store.add_snapshot(addr, now, metrics["holders"], metrics["liquidity_usd"],
+                               metrics["volume_h24_usd"], "jupiter")
             try:
                 rc_metrics, reasons = evaluate_report(rug.report(addr), cfg["rugcheck"])
                 metrics.update(rc_metrics)
             except Exception as e:
                 log.warning("rugcheck %s failed: %s", addr, e)
                 reasons = [f"rugcheck_failed: {e}"]
-            if metrics.get("rc_total_holders") is not None:
-                store.add_snapshot(addr, now, metrics["rc_total_holders"],
-                                   metrics["liquidity_usd"], metrics["volume_h24_usd"])
         metrics["passed_rugcheck"] = metrics["passed_hard_filters"] and not reasons
         metrics["tier_member"] = metrics["passed_rugcheck"]
         store.mark_checked(addr, now)
         run.results.append((metrics, reasons))
     store.commit()
 
-    # Ranking gates + post wording decide what is postable (not membership).
-    post_cfg = cfg["posting"]
+    # Ranking gates decide what is postable in the daily digest (not membership).
     window_start = now - cfg["ranking"]["holder_growth_window_hours"] * 3600
     for m, reasons in run.results:
+        m["postable"] = False
         if reasons:
             continue
-        reasons += rank_gate(m, store.snapshots_since(m["address"], window_start), now, cfg["ranking"])
-        if not reasons:
-            text, prose = compose_post(m, post_cfg["disclaimer"])
-            hits = banned_hits(prose, post_cfg["banned_words"])
-            if hits:
-                reasons.append(f"banned_word_in_post: {', '.join(hits)}")
-            else:
-                run.texts[m["address"]] = text
+        reasons += rank_gate(m, store.snapshots_since(m["address"], window_start, "jupiter"), now, cfg["ranking"])
+        m["postable"] = not reasons
     for m, reasons in run.results:
         evlog.write(m["address"], reasons, m, tier=TIER)
     return run
+
+
+def jupiter_checks(m, jup_data, f):
+    """Add Jupiter fields to m; return rejection reasons."""
+    if jup_data is None:
+        return ["jupiter_failed: search request failed"]
+    t = jup_data.get(m["address"])
+    if t is None or t.get("holderCount") is None:
+        return ["jupiter_incomplete: token or holderCount missing"]
+    audit = t.get("audit") or {}
+    m["holders"] = t["holderCount"]
+    m["dev_mints"] = audit.get("devMints")
+    m["jup_organic_score"] = t.get("organicScore")
+    if m["dev_mints"] is None:
+        return ["jupiter_incomplete: devMints missing"]
+    if m["dev_mints"] > f["max_dev_mints"]:
+        return [f"serial_creator: creator launched {m['dev_mints']} tokens > {f['max_dev_mints']}"]
+    return []

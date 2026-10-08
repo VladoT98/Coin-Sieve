@@ -1,6 +1,6 @@
-"""SQLite store: discovered tokens, holder snapshots, post history."""
+"""SQLite store: discovered tokens, holder snapshots, tiers, latest metrics, post history."""
+import json
 import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA = """
@@ -12,14 +12,40 @@ CREATE TABLE IF NOT EXISTS tokens (
     status       TEXT NOT NULL DEFAULT 'active',  -- active | too_old
     last_checked REAL
 );
--- One row per RugCheck call; used for holder growth.
+-- Holder snapshots for New Launches holder growth. `source` = where `holders` came from:
+-- rows before 2026-10-08 have NULL (RugCheck totalHolders, which counts emptied accounts) and are ignored.
 CREATE TABLE IF NOT EXISTS snapshots (
     address        TEXT NOT NULL,
     ts             REAL NOT NULL,
     holders        INTEGER,
     liquidity_usd  REAL,
     volume_h24_usd REAL,
+    source         TEXT,
     PRIMARY KEY (address, ts)
+);
+-- Latest evaluation per token per tier (JSON), read by digests and the website.
+CREATE TABLE IF NOT EXISTS latest_metrics (
+    address TEXT NOT NULL,
+    tier    TEXT NOT NULL,
+    ts      REAL NOT NULL,
+    metrics TEXT NOT NULL,
+    reasons TEXT NOT NULL,
+    PRIMARY KEY (address, tier)
+);
+-- One row per sent digest: prevents sending the same daily/weekly digest twice to a chat.
+CREATE TABLE IF NOT EXISTS digests (
+    kind       TEXT NOT NULL,                -- daily | weekly | alerts
+    period     TEXT NOT NULL,                -- UTC date, ISO week, or alert timestamp
+    chat       TEXT NOT NULL,
+    sent_at    REAL NOT NULL,
+    message_id INTEGER,
+    PRIMARY KEY (kind, period, chat)
+);
+CREATE TABLE IF NOT EXISTS posted_events (
+    event_id INTEGER NOT NULL,
+    chat     TEXT NOT NULL,
+    sent_at  REAL NOT NULL,
+    PRIMARY KEY (event_id, chat)
 );
 -- Dedupe + daily cap are per chat, so TEST-channel posts never block the main channel.
 CREATE TABLE IF NOT EXISTS posts (
@@ -62,11 +88,6 @@ CREATE TABLE IF NOT EXISTS zero_notices (
 _PER_CHAT_TABLES = ("posts", "zero_notices")
 
 
-def utc_day_start(ts):
-    d = datetime.fromtimestamp(ts, timezone.utc)
-    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp()
-
-
 class Store:
     def __init__(self, path):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -74,6 +95,9 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self._migrate_per_chat()
         self.db.executescript(SCHEMA)
+        cols = [r["name"] for r in self.db.execute("PRAGMA table_info(snapshots)")]
+        if "source" not in cols:  # non-destructive: old rows keep NULL source
+            self.db.execute("ALTER TABLE snapshots ADD COLUMN source TEXT")
 
     def _migrate_per_chat(self):
         for table in _PER_CHAT_TABLES:
@@ -111,38 +135,55 @@ class Store:
         self.db.execute("UPDATE tokens SET last_checked = ? WHERE address = ?", (now, address))
 
     # --- snapshots ---
-    def add_snapshot(self, address, now, holders, liquidity_usd, volume_h24_usd):
+    def add_snapshot(self, address, now, holders, liquidity_usd, volume_h24_usd, source):
         self.db.execute(
-            "INSERT OR REPLACE INTO snapshots VALUES (?, ?, ?, ?, ?)",
-            (address, now, holders, liquidity_usd, volume_h24_usd),
+            "INSERT OR REPLACE INTO snapshots (address, ts, holders, liquidity_usd, volume_h24_usd, source) "
+            "VALUES (?, ?, ?, ?, ?, ?)", (address, now, holders, liquidity_usd, volume_h24_usd, source),
         )
 
-    def snapshots_since(self, address, since):
+    def snapshots_since(self, address, since, source):
         return self.db.execute(
             "SELECT ts, holders FROM snapshots WHERE address = ? AND ts >= ? AND holders IS NOT NULL "
-            "ORDER BY ts", (address, since),
+            "AND source = ? ORDER BY ts", (address, since, source),
         ).fetchall()
 
-    # --- posts ---
-    def posts_today(self, now, chat):
-        return self.db.execute(
-            "SELECT COUNT(*) FROM posts WHERE chat = ? AND posted_at >= ?", (chat, utc_day_start(now))
-        ).fetchone()[0]
+    # --- latest metrics ---
+    def save_latest(self, tier, results, now):
+        self.db.executemany(
+            "INSERT OR REPLACE INTO latest_metrics (address, tier, ts, metrics, reasons) VALUES (?, ?, ?, ?, ?)",
+            [(m["address"], tier, now, json.dumps(m), json.dumps(r)) for m, r in results],
+        )
 
+    def latest(self, tier, addresses):
+        if not addresses:
+            return {}
+        q = ",".join("?" * len(addresses))
+        rows = self.db.execute(f"SELECT * FROM latest_metrics WHERE tier = ? AND address IN ({q})",
+                               [tier, *addresses])
+        return {r["address"]: {"ts": r["ts"], "metrics": json.loads(r["metrics"]),
+                               "reasons": json.loads(r["reasons"])} for r in rows}
+
+    # --- posts / digests ---
     def posted_to(self, chat):
         return {r[0] for r in self.db.execute("SELECT address FROM posts WHERE chat = ?", (chat,))}
 
     def add_post(self, address, now, chat, message_id):
-        # Token stays 'active' so it can still be evaluated/posted for other chats.
-        self.db.execute("INSERT INTO posts (address, chat, posted_at, message_id) VALUES (?, ?, ?, ?)",
+        self.db.execute("INSERT OR IGNORE INTO posts (address, chat, posted_at, message_id) VALUES (?, ?, ?, ?)",
                         (address, chat, now, message_id))
 
-    def zero_notice_sent(self, day, chat):
-        return self.db.execute("SELECT 1 FROM zero_notices WHERE day = ? AND chat = ?",
-                               (day, chat)).fetchone() is not None
+    def digest_sent(self, kind, period, chat):
+        return self.db.execute("SELECT 1 FROM digests WHERE kind = ? AND period = ? AND chat = ?",
+                               (kind, period, chat)).fetchone() is not None
 
-    def add_zero_notice(self, day, chat, now):
-        self.db.execute("INSERT INTO zero_notices (day, chat, posted_at) VALUES (?, ?, ?)", (day, chat, now))
+    def add_digest(self, kind, period, chat, now, message_id):
+        self.db.execute("INSERT INTO digests VALUES (?, ?, ?, ?, ?)", (kind, period, chat, now, message_id))
+
+    def posted_event_ids(self, chat):
+        return {r[0] for r in self.db.execute("SELECT event_id FROM posted_events WHERE chat = ?", (chat,))}
+
+    def add_posted_events(self, event_ids, chat, now):
+        self.db.executemany("INSERT OR IGNORE INTO posted_events VALUES (?, ?, ?)",
+                            [(i, chat, now) for i in event_ids])
 
     # --- tiers ---
     def current_members(self, tier):
@@ -177,6 +218,10 @@ class Store:
         if tier:
             sql, args = sql + " AND tier = ?", args + [tier]
         return self.db.execute(sql + " ORDER BY ts, id", args).fetchall()
+
+    def tier_first_event_ts(self, tier):
+        """When a tier was first populated; events right after it are the initial bootstrap."""
+        return self.db.execute("SELECT MIN(ts) FROM tier_events WHERE tier = ?", (tier,)).fetchone()[0]
 
     def commit(self):
         self.db.commit()
