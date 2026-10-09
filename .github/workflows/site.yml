@@ -5,7 +5,9 @@ name: Refresh site
 
 on:
   schedule:
-    - cron: "7,37 * * * *"   # every 30 min; GitHub may start scheduled runs late
+    - cron: "7,37 * * * *"   # every 30 min; GitHub may start scheduled runs late (or skip them)
+  push:
+    branches: [main]         # code changes go live right away instead of waiting for the schedule
   workflow_dispatch:
 
 permissions:
