@@ -25,19 +25,29 @@ columns:
     body: Last traded price in US dollars from Jupiter, Solana's largest trading aggregator, at the time shown. It updates when the list is refreshed, not live.
     more: prices
   mcap:
-    short: MCap
+    short: Market cap
     title: Market cap
     body: Price × tokens in circulation. A rough measure of the token's size today; tokens that are still locked or not yet released are not included.
     more: prices
+  change_1h:
+    short: 1h %
+    title: 1h change
+    body: Price change over the last hour, from Jupiter. It describes the past hour only.
+    more: prices
   change_24h:
-    short: 24h
+    short: 24h %
     title: 24h change
     body: Price change over the last 24 hours, from Jupiter. It describes the past day only.
     more: prices
+  change_7d:
+    short: 7d %
+    title: 7d change
+    body: Price change over the last 7 days, from the first to the last hourly close of the token's largest trading pool (GeckoTerminal). It is the same series as the 7-day line.
+    more: prices
   chart_7d:
-    short: 7d
-    title: 7d price
-    body: Hourly closing prices over the last 7 days from the token's largest trading pool (GeckoTerminal). The % compares the first and last point of this same line.
+    short: Last 7 days
+    title: Last 7 days
+    body: Hourly closing prices over the last 7 days from the token's largest trading pool (GeckoTerminal). Hours without trades have no point.
     more: prices
   top10:
     short: Top 10
@@ -70,7 +80,7 @@ columns:
     body: Money sitting in the token's trading pools, in US dollars (Jupiter). More liquidity means a trade moves the price less.
     more: prices
   volume:
-    short: Volume
+    short: Volume (24h)
     title: Volume 24h
     body: Dollar value traded in the last 24 hours across all pools Jupiter tracks.
     more: prices
@@ -85,7 +95,7 @@ columns:
     body: Change in the number of wallets holding the token over the last 24 hours, in percent (Jupiter).
     more: holders
   circ_supply:
-    short: Circ.
+    short: Circ. supply
     title: Circulating supply
     body: Tokens in circulation now (Jupiter). Locked or not yet released tokens are not included.
     more: supply

@@ -68,6 +68,7 @@ def jup_metrics(t, now):
         # v3 coverage list (verified 2026-10-09 on the JUP token object)
         "price_usd": t.get("usdPrice"),
         "price_change_24h_pct": s24.get("priceChange"),
+        "price_change_1h_pct": (t.get("stats1h") or {}).get("priceChange"),
         "circ_supply": t.get("circSupply"),
         "total_supply": t.get("totalSupply"),
         "website": t.get("website"),

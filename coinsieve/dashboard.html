@@ -369,11 +369,15 @@ const COLS = [
       td.title = fill(T.table.as_of, { time: clock(t.ts) }); return el("span", "px pv", fmtPrice(t.metrics.price_usd)); } },
   { key: "mcap", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.mcap_usd, cell: (t) => el("span", null, usd(t.metrics.mcap_usd)) },
   { key: "change_24h", group: "price", w: 8, r: 1, num: 1, get: (t) => t.metrics.price_change_24h_pct, cell: (t) => { const v = t.metrics.price_change_24h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
-  { key: "chart_7d", group: "price", w: 13, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null, cell: (t, td) => {
+  { key: "change_1h", group: "price", w: 7, r: 1, num: 1, get: (t) => t.metrics.price_change_1h_pct, cell: (t) => { const v = t.metrics.price_change_1h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
+  { key: "change_7d", group: "price", w: 7, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null, cell: (t, td) => {
+      const c = t.chart; if (!c) { td.title = T.table.no_chart; return el("span", "sub", "–"); }
+      if (c.stale) td.title = T.table.chart_stale; return el("span", tone(c.change_pct, 1), signed(c.change_pct, 1, "%")); } },
+  { key: "chart_7d", group: "price", w: 11, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null, cell: (t, td) => {
       const c = t.chart;
       if (!c || !SVG_OK.test(c.svg)) { td.title = T.table.no_chart; return el("span", "sub", "–"); }
       const d = el("div", "sparkcell" + (c.stale ? " stale" : "")), g = el("span", "sparkwrap"); g.innerHTML = c.svg;  // server-built from numbers only, shape-checked above
-      d.append(g, two(signed(c.change_pct, 1, "%"), c.stale ? T.table.chart_stale : (c.span_h < c.window_h * 0.9 ? spanText(c.span_h) : ""), tone(c.change_pct, 1)));
+      d.append(g);
       td.title = fill(T.table.chart_tip, { n: c.points, span: spanText(c.span_h), first: fmtPrice(c.first), last: fmtPrice(c.last), ago: ago(c.fetched_at) });
       return d; } },
   { key: "top10", group: "holders", w: 9, r: 1, num: 1, get: top10, cell: (t, td) => {
@@ -388,10 +392,10 @@ const COLS = [
   { key: "unlock", group: "unlocks", admin: 1, w: 9, r: 1, get: () => null, cell: (t, td) => { td.title = T.filters.unlock_unavailable; return two("–", T.table.no_unlock); } },
   { key: "fdv", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.fdv_usd, cell: (t) => el("span", null, usd(t.metrics.fdv_usd)) },
   { key: "liquidity", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.liquidity_usd, cell: (t) => el("span", null, usd(t.metrics.liquidity_usd)) },
-  { key: "circ_supply", group: "supply", w: 9, r: 1, num: 1, get: (t) => t.metrics.circ_supply, cell: (t) => el("span", null, compact(t.metrics.circ_supply)) },
+  { key: "circ_supply", group: "supply", w: 11, r: 1, num: 1, get: (t) => t.metrics.circ_supply, cell: (t) => el("span", null, t.metrics.circ_supply == null ? "–" : compact(t.metrics.circ_supply) + " " + (t.metrics.symbol || "")) },
   { key: "max_supply", group: "supply", w: 9, r: 1, num: 1, get: maxSupply, cell: (t) => el("span", null, compact(maxSupply(t))) },
   { key: "circ_pct", group: "supply", w: 9, r: 1, num: 1, get: circPct, cell: (t) => el("span", null, pct(circPct(t))) },
-  { key: "volume", group: "activity", w: 9, r: 1, num: 1, get: (t) => t.metrics.volume_h24_usd, cell: (t) => el("span", null, usd(t.metrics.volume_h24_usd)) },
+  { key: "volume", group: "activity", w: 11, r: 1, num: 1, get: (t) => t.metrics.volume_h24_usd, cell: (t) => el("span", null, usd(t.metrics.volume_h24_usd)) },
   { key: "bought_sold", group: "activity", w: 10, r: 1, num: 1, get: (t) => t.metrics.bought_usd_h24, cell: (t) => {
       const b = t.metrics.bought_usd_h24, s = t.metrics.sold_usd_h24; return b == null && s == null ? el("span", "sub", "–") : two(usd(b ?? 0), usd(s ?? 0), "bo", "so"); } },
   { key: "age", group: "project", w: 7, r: 1, num: 1, get: (t) => t.metrics.age_d, cell: (t) => el("span", null, t.metrics.age_d == null ? "–" : num(t.metrics.age_d) + "d") },
@@ -414,7 +418,7 @@ function pickColumns(saved, available, defaults, max) {
   return picked.length ? picked : clean(defaults);   // nothing usable saved -> default set
 }
 // </pick-columns>
-const COL_KEY = "coinsieve.columns.v1";
+const COL_KEY = "coinsieve.columns.v2";   // v2: new default set (2026-10-09) replaces earlier saved choices
 let chosen = null;
 const availableCols = () => COLS.filter((c) => c.group && !(c.admin && S.mode === "public" && !S.unlocks_public)).map((c) => c.key);
 const defaultCols = () => pickColumns(S.columns.default, availableCols(), [], S.columns.max);

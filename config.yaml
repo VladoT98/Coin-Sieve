@@ -20,7 +20,7 @@ coverage:
 
 site:                              # website Tokens table (visitors' column choice is kept in their browser only)
   columns_max: 9                   # columns a visitor can show at once (Token is always shown and not counted)
-  default_columns: [price, change_24h, chart_7d, mcap, top10, holders, docs]   # "unlock" is selectable, not default
+  default_columns: [price, change_1h, change_24h, change_7d, mcap, volume, circ_supply, chart_7d]   # "unlock" is selectable, not default
 
 unlocks:
   public: false                    # DefiLlama terms not cleared (user decision 2026-10-09): unlock column admin-only
