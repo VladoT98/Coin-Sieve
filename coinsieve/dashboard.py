@@ -122,6 +122,8 @@ class App:
                    "members": len(members), "tokens": rows, "chart_hours": hours,
                    "criteria": whatif.current_values(cfg, coverage.TIER),
                    "exclude_tags": cfg["jupiter"]["exclude_tags"], "sources": self.sources(store, ts),
+                   "columns": {"max": cfg["site"]["columns_max"], "default": cfg["site"]["default_columns"]},
+                   "unlocks_public": cfg["unlocks"]["public"],
                    "run": None if self.public else self.runner.status()}
             if not self.public:
                 out["fields"] = [{"path": p, "label": lab, "kind": k, "help": h}

@@ -52,13 +52,83 @@ columns:
   unlock:
     short: Unlock
     title: Next unlock
-    body: The next scheduled release of locked tokens (for example team or investor allocations) into circulation. Unlock data is not yet available on this site.
+    body: "The next scheduled release of locked tokens (for example team or investor allocations) into circulation. Source: DefiLlama's public unlock schedules, which list only some projects (about 14 of the tokens checked here) and are not loaded yet, so the column shows “–”. Admin view only until DefiLlama's terms of use are cleared."
     more: unlocks
   docs:
     short: Docs
     title: Docs
     body: Whether a whitepaper or documentation site was found through the project's own links. ✓ means a link was found, not that its content was checked.
     more: links
+  fdv:
+    short: FDV
+    title: Fully diluted value
+    body: Price × every token that will ever exist, including ones not released yet. The gap to market cap shows how much supply is still to come.
+    more: prices
+  liquidity:
+    short: Liquidity
+    title: Liquidity
+    body: Money sitting in the token's trading pools, in US dollars (Jupiter). More liquidity means a trade moves the price less.
+    more: prices
+  volume:
+    short: Volume
+    title: Volume 24h
+    body: Dollar value traded in the last 24 hours across all pools Jupiter tracks.
+    more: prices
+  bought_sold:
+    short: Bought / sold
+    title: Bought / sold 24h
+    body: The last 24 hours of trading split into the dollar value bought (upper line) and sold (lower line), from Jupiter. A side with no trades shows $0.
+    more: prices
+  holder_change:
+    short: Holders Δ
+    title: Holder change 24h
+    body: Change in the number of wallets holding the token over the last 24 hours, in percent (Jupiter).
+    more: holders
+  circ_supply:
+    short: Circ.
+    title: Circulating supply
+    body: Tokens in circulation now (Jupiter). Locked or not yet released tokens are not included.
+    more: supply
+  max_supply:
+    short: Max
+    title: Maximum supply
+    body: The most tokens that can ever exist, as published on CoinGecko. “–” when no maximum is published.
+    more: supply
+  circ_pct:
+    short: Circ. %
+    title: Share in circulation
+    body: Circulating supply as a share of the maximum supply, or of the total supply when no maximum is published. Below 100% means more tokens can still enter circulation.
+    more: supply
+  age:
+    short: Age
+    title: Age
+    body: Days since the token's first trading pool was created (Jupiter).
+    more: coverage
+
+# Groups in the column picker ("Columns" button)
+column_groups:
+  price: Price
+  market: Market
+  holders: Holders
+  supply: Supply
+  unlocks: Unlocks
+  activity: Activity
+  project: Project
+
+picker:
+  button: Columns
+  title: Columns
+  chosen: "{n} of {max} chosen"
+  token_fixed: Token is always shown first.
+  max_reached: "Up to {max} columns. Remove one to add another."
+  shown: Shown, in this order
+  hint: Drag to reorder, or use the arrows.
+  up: Move up
+  down: Move down
+  remove: Remove
+  restore: Restore default
+  done: Done
+  stored: Saved in this browser only.
 
 table:
   search: Search symbol, name, address
@@ -268,6 +338,10 @@ methodology:
       paras:
         - Website, whitepaper, docs, X and GitHub links are taken from the project's listings on Jupiter, DexScreener and CoinGecko, and from links on the project's own homepage. The only address Coin Sieve tries on its own is docs.<project domain>, and it counts only if a page answers.
         - ✓ means a link was found. It does not mean the content was checked or is accurate.
+    - id: supply
+      title: Supply
+      paras:
+        - Circulating supply comes from Jupiter. Maximum supply comes from CoinGecko and is missing when the project has not published one. Market cap uses the circulating supply; FDV uses every token that will ever exist.
     - id: unlocks
       title: Token unlocks
       paras:

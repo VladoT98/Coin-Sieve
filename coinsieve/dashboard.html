@@ -192,6 +192,31 @@
   .modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 800; font-size: 15px; }
   .modal .mh button { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
   .modal .mb { overflow: auto; padding: 8px 16px 14px; }
+  .colbtn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel2); border-radius: 7px; padding: 5px 10px; cursor: pointer; color: var(--muted); font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .colbtn:hover { color: var(--text); background: var(--hover); }
+  .bo { color: #4fb8b2; } .so { color: #c98a5a; }   /* bought / sold: neutral teal / copper, not green / red */
+
+  /* column picker (modal) */
+  .picker { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-top: 6px; }
+  .picker h3 { margin: 12px 0 5px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .picker h3:first-child { margin-top: 2px; }
+  .pk { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; }
+  .pk:hover { background: var(--hover); } .pk input { accent-color: var(--blue); margin: 0; }
+  .pk.off { opacity: .45; }
+  .pk .hl { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 13px; }
+  .pnote { color: var(--muted); font-size: 12px; margin: 2px 0 8px; } .pnote.warn { color: var(--amber); }
+  .order { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .order li { display: flex; align-items: center; gap: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 6px 5px 8px; cursor: grab; }
+  .order li.fixed { cursor: default; opacity: .6; } .order li.drag { opacity: .4; } .order li.over { border-color: var(--blue); }
+  .order .grip { color: var(--dim); font-size: 12px; } .order .nm2 { flex: 1; font-weight: 700; font-size: 12.5px; }
+  .order .grp { color: var(--dim); font-size: 11px; }
+  .order button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 5px; border-radius: 5px; font-size: 12px; }
+  .order button:hover:not(:disabled) { color: var(--text); background: var(--hover); } .order button:disabled { opacity: .25; cursor: default; }
+  .pfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .pfoot .sub { margin-right: auto; }
+  .pfoot button { border: 1px solid var(--line); background: var(--panel2); border-radius: 7px; padding: 7px 14px; cursor: pointer; font-weight: 700; }
+  .pfoot button.done { background: #fff; color: #000; border-color: #fff; }
+  @media (max-width: 700px) { .picker { grid-template-columns: 1fr; } }
   .gl h3 { margin: 14px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .gl dl { margin: 0; display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; } .gl dt { font-weight: 700; } .gl dd { margin: 0; color: #c9cad3; }
 
@@ -271,7 +296,7 @@ const num = (v, d = 0) => v === null || v === undefined ? "–"
 function usd(v) { if (v === null || v === undefined) return "–"; const a = Math.abs(v);
   for (const [div, s] of [[1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]]) if (a >= div) return "$" + (v / div).toFixed(1) + s; return "$" + num(v); }
 function compact(v) { if (v === null || v === undefined) return "–"; const a = Math.abs(v);
-  if (a >= 1e9) return (v / 1e9).toFixed(2) + "B"; if (a >= 1e6) return (v / 1e6).toFixed(1) + "M"; if (a >= 1e4) return (v / 1e3).toFixed(1) + "K"; return num(v); }
+  if (a >= 1e12) return (v / 1e12).toFixed(2) + "T"; if (a >= 1e9) return (v / 1e9).toFixed(2) + "B"; if (a >= 1e6) return (v / 1e6).toFixed(1) + "M"; if (a >= 1e4) return (v / 1e3).toFixed(1) + "K"; return num(v); }
 const signed = (v, d, suf = "") => v == null ? "–" : (v >= 0.5 / 10 ** d ? "+" : "") + num(v, d) + suf;
 const tone = (v, d) => v == null ? "" : v >= 0.5 / 10 ** d ? "pos" : v <= -0.5 / 10 ** d ? "neg" : "";
 const pct = (v) => v == null ? "–" : v >= 99.95 ? "100%" : num(v, 1) + "%";
@@ -320,35 +345,49 @@ function showGlossary() {
 }
 $("glossBtn").onclick = showGlossary;
 
-// ---- columns (widths sum to 100%) -----------------------------------------------------------
+// ---- columns: catalog (w = relative width; shown columns are scaled to 100%) ------------------------
 const SVG_OK = /^<svg [^<>]*><polyline [^<>]*\/><\/svg>$/;
 const spanText = (h) => h >= 48 ? num(h / 24) + "d" : num(h) + "h";
+const maxSupply = (t) => t.supply && t.supply.max != null ? t.supply.max : null;
+function circPct(t) { const c = t.metrics.circ_supply, d = maxSupply(t) ?? t.metrics.total_supply; return c != null && d ? Math.min(100, (c / d) * 100) : null; }
 const COLS = [
-  { key: "token", w: 20, get: (t) => (t.metrics.symbol || "").toLowerCase(), cell: (t) => {
+  { key: "token", group: null, w: 20, get: (t) => (t.metrics.symbol || "").toLowerCase(), cell: (t) => {
       const m = t.metrics, row = el("div", "tokcell"), d = el("div", "two"), top = el("span");
       top.append(el("span", "sym", m.symbol || "?"), el("span", "chain", "SOL"));
       let sub = m.name || "";
       if (view === "outside") { const r = res(t), bad = (r.checks || []).find((c) => !c.info && c.ok !== true); if (bad) sub = (bad.ok === false ? "✕ " : "? ") + bad.label; }
       d.append(top, el("span", "sub" + (view === "outside" ? " miss" : ""), sub)); row.append(coin(t, "coin"), d); return row; } },
-  { key: "price", w: 11, r: 1, num: 1, get: (t) => t.metrics.price_usd, cell: (t, td) => {
+  { key: "price", group: "price", w: 11, r: 1, num: 1, get: (t) => t.metrics.price_usd, cell: (t, td) => {
       td.title = fill(T.table.as_of, { time: clock(t.ts) }); return el("span", "px pv", fmtPrice(t.metrics.price_usd)); } },
-  { key: "mcap", w: 9, r: 1, num: 1, get: (t) => t.metrics.mcap_usd, cell: (t) => el("span", null, usd(t.metrics.mcap_usd)) },
-  { key: "change_24h", w: 8, r: 1, num: 1, get: (t) => t.metrics.price_change_24h_pct, cell: (t) => { const v = t.metrics.price_change_24h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
-  { key: "chart_7d", w: 13, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null, cell: (t, td) => {
+  { key: "mcap", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.mcap_usd, cell: (t) => el("span", null, usd(t.metrics.mcap_usd)) },
+  { key: "change_24h", group: "price", w: 8, r: 1, num: 1, get: (t) => t.metrics.price_change_24h_pct, cell: (t) => { const v = t.metrics.price_change_24h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
+  { key: "chart_7d", group: "price", w: 13, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null, cell: (t, td) => {
       const c = t.chart;
       if (!c || !SVG_OK.test(c.svg)) { td.title = T.table.no_chart; return el("span", "sub", "–"); }
       const d = el("div", "sparkcell" + (c.stale ? " stale" : "")), g = el("span", "sparkwrap"); g.innerHTML = c.svg;  // server-built from numbers only, shape-checked above
       d.append(g, two(signed(c.change_pct, 1, "%"), c.stale ? T.table.chart_stale : (c.span_h < c.window_h * 0.9 ? spanText(c.span_h) : ""), tone(c.change_pct, 1)));
       td.title = fill(T.table.chart_tip, { n: c.points, span: spanText(c.span_h), first: fmtPrice(c.first), last: fmtPrice(c.last), ago: ago(c.fetched_at) });
       return d; } },
-  { key: "top10", w: 9, r: 1, num: 1, get: top10, cell: (t, td) => {
+  { key: "top10", group: "holders", w: 9, r: 1, num: 1, get: top10, cell: (t, td) => {
       const h = t.holders;
       if (!h || h.top10_excl_pct == null) { td.title = T.table.no_holder_data; return el("span", "sub", "–"); }
       td.title = fill(T.table.top10_tip, { excl: pct(h.top10_excl_pct), all: pct(h.top10_all_pct), out: pct(h.excluded_pct) }) + (h.complete ? "" : "\n" + T.table.incomplete);
       return el("span", null, (h.complete ? "" : "≥") + pct(h.top10_excl_pct)); } },
-  { key: "holders", w: 9, r: 1, num: 1, get: (t) => t.metrics.holders, cell: (t) => el("span", null, compact(t.metrics.holders)) },
-  { key: "unlock", w: 9, r: 1, get: () => null, cell: (t, td) => { td.title = T.filters.unlock_unavailable; return two("–", T.table.no_unlock); } },
-  { key: "docs", w: 12, get: docsScore, cell: (t) => {
+  { key: "holders", group: "holders", w: 9, r: 1, num: 1, get: (t) => t.metrics.holders, cell: (t) => el("span", null, compact(t.metrics.holders)) },
+  { key: "holder_change", group: "holders", w: 8, r: 1, num: 1, get: (t) => t.metrics.holder_change_24h_pct, cell: (t) => {
+      const v = t.metrics.holder_change_24h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
+  // admin: hidden in public mode while unlocks.public is false (DefiLlama terms not cleared)
+  { key: "unlock", group: "unlocks", admin: 1, w: 9, r: 1, get: () => null, cell: (t, td) => { td.title = T.filters.unlock_unavailable; return two("–", T.table.no_unlock); } },
+  { key: "fdv", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.fdv_usd, cell: (t) => el("span", null, usd(t.metrics.fdv_usd)) },
+  { key: "liquidity", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.liquidity_usd, cell: (t) => el("span", null, usd(t.metrics.liquidity_usd)) },
+  { key: "circ_supply", group: "supply", w: 9, r: 1, num: 1, get: (t) => t.metrics.circ_supply, cell: (t) => el("span", null, compact(t.metrics.circ_supply)) },
+  { key: "max_supply", group: "supply", w: 9, r: 1, num: 1, get: maxSupply, cell: (t) => el("span", null, compact(maxSupply(t))) },
+  { key: "circ_pct", group: "supply", w: 9, r: 1, num: 1, get: circPct, cell: (t) => el("span", null, pct(circPct(t))) },
+  { key: "volume", group: "activity", w: 9, r: 1, num: 1, get: (t) => t.metrics.volume_h24_usd, cell: (t) => el("span", null, usd(t.metrics.volume_h24_usd)) },
+  { key: "bought_sold", group: "activity", w: 10, r: 1, num: 1, get: (t) => t.metrics.bought_usd_h24, cell: (t) => {
+      const b = t.metrics.bought_usd_h24, s = t.metrics.sold_usd_h24; return b == null && s == null ? el("span", "sub", "–") : two(usd(b ?? 0), usd(s ?? 0), "bo", "so"); } },
+  { key: "age", group: "project", w: 7, r: 1, num: 1, get: (t) => t.metrics.age_d, cell: (t) => el("span", null, t.metrics.age_d == null ? "–" : num(t.metrics.age_d) + "d") },
+  { key: "docs", group: "project", w: 12, get: docsScore, cell: (t) => {
       const d = el("span", "doc");
       if (!profiled(t)) { d.append(el("span", "sub", "–")); return d; }
       const found = [linkOk(t, "whitepaper") && T.table.whitepaper, linkOk(t, "docs") && T.table.docs].filter(Boolean);
@@ -356,20 +395,47 @@ const COLS = [
       return d; } },
 ];
 const colText = (c) => T.columns[c.key];
+const COL = Object.fromEntries(COLS.map((c) => [c.key, c]));
+
+// Visitor's column choice: ids in display order, kept in this browser only (never sent to the server).
+// <pick-columns> tests/test_columns.py runs this function under Node — keep it self-contained.
+function pickColumns(saved, available, defaults, max) {
+  const ok = new Set(available);
+  const clean = (ids) => [...new Set((Array.isArray(ids) ? ids : []).filter((id) => typeof id === "string" && ok.has(id)))].slice(0, max);
+  const picked = clean(saved);
+  return picked.length ? picked : clean(defaults);   // nothing usable saved -> default set
+}
+// </pick-columns>
+const COL_KEY = "coinsieve.columns.v1";
+let chosen = null;
+const availableCols = () => COLS.filter((c) => c.group && !(c.admin && S.mode === "public" && !S.unlocks_public)).map((c) => c.key);
+const defaultCols = () => pickColumns(S.columns.default, availableCols(), [], S.columns.max);
+const shownCols = () => [COL.token, ...chosen.map((k) => COL[k])];
+function loadColumns() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(COL_KEY)); } catch { /* blocked or corrupt storage -> default */ }
+  chosen = pickColumns(saved, availableCols(), S.columns.default, S.columns.max);
+}
+function setColumns(ids, persist = true) {
+  chosen = ids;
+  if (persist) { try { localStorage.setItem(COL_KEY, JSON.stringify(ids)); } catch { /* storage unavailable: choice lasts this visit */ } }
+  if (sortKey && !chosen.includes(sortKey) && sortKey !== "token") { sortKey = null; sortDir = 1; }
+  renderTable();
+}
 
 // ---- header tooltips (hover / focus / tap; Esc closes; Tab moves into the popover) ----------------
 let tipFor = null, tipBtn = null, tipHide = null, lastPointer = "mouse";
 document.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType || "mouse";
   if (tipFor && !$("tip").contains(e.target) && !(e.target.closest && e.target.closest(".hl"))) hideTip(); }, true);
-function showTip(btn, col) {
+function showTip(btn, col, withSort = true) {  // same text in the table header and the column picker
   clearTimeout(tipHide);
   if (tipBtn && tipBtn !== btn) tipBtn.setAttribute("aria-expanded", "false");
   const tx = colText(col), tip = $("tip"); tipFor = col.key; tipBtn = btn;
   const body = el("p", null, tx.body); body.id = "tipBody";
   const more = el("a", null, T.tip.more); more.href = "#/methodology/" + tx.more;
-  more.onclick = () => hideTip();
-  const sort = el("button", null, T.tip.sort); sort.onclick = () => { hideTip(); sortBy(col); };
-  const ta = el("div", "ta"); ta.append(more, sort);
+  more.onclick = () => { hideTip(); closeModal(); };
+  const ta = el("div", "ta"); ta.append(more);
+  if (withSort) { const sort = el("button", null, T.tip.sort); sort.onclick = () => { hideTip(); sortBy(col); }; ta.append(sort); }
   tip.replaceChildren(el("h4", null, tx.title), body, ta); tip.hidden = false;
   btn.setAttribute("aria-expanded", "true"); btn.setAttribute("aria-describedby", "tipBody");
   const r = btn.getBoundingClientRect(), w = tip.offsetWidth;
@@ -381,27 +447,33 @@ function hideTipSoon() { clearTimeout(tipHide); tipHide = setTimeout(hideTip, 22
 $("tip").onmouseenter = () => clearTimeout(tipHide); $("tip").onmouseleave = hideTipSoon;
 $("tip").addEventListener("keydown", (e) => {
   const items = [...$("tip").querySelectorAll("a, button")];
-  if (e.key === "Escape") { const b = tipBtn; hideTip(); if (b) b.focus(); e.preventDefault(); }
+  if (e.key === "Escape") { const b = tipBtn; hideTip(); if (b) b.focus(); e.preventDefault(); e.stopPropagation(); }
   else if (e.key === "Tab" && e.shiftKey && document.activeElement === items[0]) { e.preventDefault(); tipBtn.focus(); }
   else if (e.key === "Tab" && !e.shiftKey && document.activeElement === items[items.length - 1]) {
-    e.preventDefault(); const hs = [...document.querySelectorAll(".hl")], i = hs.indexOf(tipBtn); hideTip(); (hs[i + 1] || hs[i]).focus(); }
+    e.preventDefault(); const scope = tipBtn.closest(".picker") || $("thead"), hs = [...scope.querySelectorAll(".hl")], i = hs.indexOf(tipBtn);
+    const next = tipBtn.closest(".pk") ? tipBtn.closest(".pk").nextElementSibling : null;   // picker: continue to the next row's checkbox
+    hideTip(); (next && next.querySelector("input") || hs[i + 1] || hs[i]).focus(); }
 });
 $("tip").addEventListener("focusout", (e) => { if (!$("tip").contains(e.relatedTarget) && e.relatedTarget !== tipBtn) hideTipSoon(); });
 addEventListener("resize", hideTip);
 
 function sortBy(c) { sortDir = sortKey === c.key ? -sortDir : (c.key === "token" ? 1 : -1); sortKey = c.key; page = 0; renderTable(); }
-function headerCell(c) {
-  const th = el("th", c.r ? "r" : ""), w = el("div", "thw"), b = el("button", "hl", colText(c).short || colText(c).title);
+function tipButton(c, text, withSort) {  // a label that shows the column's tooltip on hover / focus / tap
+  const b = el("button", "hl", text);
   b.type = "button"; b.setAttribute("aria-expanded", "false"); b.setAttribute("aria-controls", "tip");
-  b.onmouseenter = () => { if (lastPointer !== "touch") showTip(b, c); };
+  b.onmouseenter = () => { if (lastPointer !== "touch") showTip(b, c, withSort); };
   b.onmouseleave = hideTipSoon;
-  b.onfocus = () => { if (lastPointer !== "touch") showTip(b, c); };
+  b.onfocus = () => { if (lastPointer !== "touch") showTip(b, c, withSort); };
   b.onblur = (e) => { if (!$("tip").contains(e.relatedTarget)) hideTipSoon(); };
-  b.onclick = (e) => { e.stopPropagation(); if (lastPointer === "touch" && tipFor !== c.key) { showTip(b, c); return; } hideTip(); sortBy(c); };
   b.onkeydown = (e) => {
-    if (e.key === "Escape") { hideTip(); e.preventDefault(); }
+    if (e.key === "Escape" && tipFor) { hideTip(); e.preventDefault(); e.stopPropagation(); }   // first Esc closes only the tooltip
     else if (e.key === "Tab" && !e.shiftKey && tipFor === c.key) { const first = $("tip").querySelector("a"); if (first) { e.preventDefault(); first.focus(); } }
   };
+  return b;
+}
+function headerCell(c) {
+  const th = el("th", c.r ? "r" : ""), w = el("div", "thw"), b = tipButton(c, colText(c).short || colText(c).title, true);
+  b.onclick = (e) => { e.stopPropagation(); if (lastPointer === "touch" && tipFor !== c.key) { showTip(b, c); return; } hideTip(); sortBy(c); };
   w.append(b); if (sortKey === c.key) w.append(el("span", "ar", sortDir > 0 ? "▲" : "▼"));
   th.append(w); th.onclick = () => sortBy(c);
   return th;
@@ -483,12 +555,13 @@ function renderTokensView() {
     c.disabled = !!disabled; if (title) c.title = title; c.onclick = click; chips.append(c); };
   chip(fill(T.filters.chip_top10, { n: lim }), F.maxTop10 != null, () => { F.maxTop10 = F.maxTop10 == null ? 30 : null; filtersChanged(); });
   chip(T.filters.chip_whitepaper, F.whitepaper, () => { F.whitepaper = !F.whitepaper; filtersChanged(); });
-  chip(T.filters.chip_unlock, false, null, true, T.filters.unlock_unavailable);
+  if (availableCols().includes("unlock")) chip(T.filters.chip_unlock, false, null, true, T.filters.unlock_unavailable);
   const search = el("label", "search"), inp = el("input"); inp.id = "search"; inp.placeholder = T.table.search; inp.setAttribute("aria-label", T.table.search);
   inp.value = query; inp.oninput = () => { query = inp.value; page = 0; renderTable(); }; search.append(el("span", null, "⌕"), inp);
   const stale = S.last_run && S.now - S.last_run > S.stale_after_s;
   const meta = el("span", "meta" + (stale ? " stale" : ""), S.last_run ? fill(T.table.updated, { ago: ago(S.last_run) }) + (stale ? " · " + T.table.stale : "") : T.table.never);
-  bar.append(chips, el("div", "sep"), search, meta);
+  const cb = el("button", "colbtn"); cb.type = "button"; cb.append(el("span", null, "▦"), T.picker.button); cb.onclick = openPicker;
+  bar.append(chips, el("div", "sep"), search, cb, meta);
   const wrap = el("div", "twrap"); wrap.id = "twrap";
   const table = el("table", "list"), cg = el("colgroup"); cg.id = "cols"; const th = el("thead"); th.id = "thead"; const tb = el("tbody"); tb.id = "tbody";
   table.append(cg, th, tb); wrap.append(table);
@@ -509,15 +582,16 @@ function passesFilters(t) {
 }
 function filteredRows() {
   const rows = S.tokens.filter((t) => (view === "covered" ? covered(t) : !covered(t)) && passesFilters(t));
-  const sc = COLS.find((c) => c.key === sortKey);
+  const sc = shownCols().find((c) => c.key === sortKey);
   const get = sc ? sc.get : (t) => t.metrics.mcap_usd, dir = sc ? sortDir : -1;
   return rows.sort((a, b) => { const va = get(a), vb = get(b);
     if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return (va < vb ? -1 : va > vb ? 1 : 0) * dir; });
 }
 function renderTable() {
   if (!$("tbody")) return;
-  $("cols").replaceChildren(...COLS.map((c) => { const col = el("col"); col.style.width = c.w + "%"; return col; }));
-  const tr = el("tr"); for (const c of COLS) tr.append(headerCell(c)); $("thead").replaceChildren(tr);
+  const cols = shownCols(), wsum = cols.reduce((s, c) => s + c.w, 0);
+  $("cols").replaceChildren(...cols.map((c) => { const col = el("col"); col.style.width = (c.w / wsum * 100).toFixed(2) + "%"; return col; }));
+  const tr = el("tr"); for (const c of cols) tr.append(headerCell(c)); $("thead").replaceChildren(tr);
   pageSize = Math.max(4, Math.floor(($("twrap").clientHeight - HEAD_H) / ROW_H));
   const rows = filteredRows(), pages = Math.max(1, Math.ceil(rows.length / pageSize));
   page = Math.min(page, pages - 1);
@@ -527,11 +601,11 @@ function renderTable() {
     const row = el("tr", t.metrics.address === selected ? "sel" : ""); row.tabIndex = 0;
     const pick = () => { selected = t.metrics.address; rightTab = "token"; renderTable(); renderRight(); };
     row.onclick = pick; row.onkeydown = (e) => { if (e.key === "Enter") pick(); };
-    for (const c of COLS) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : "")); td.append(c.cell(t, td)); row.append(td); }
+    for (const c of cols) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : "")); td.append(c.cell(t, td)); row.append(td); }
     frag.append(row);
   }
   $("tbody").replaceChildren(frag);
-  if (!rows.length) { const r = el("tr"), td = el("td", "empty", view === "covered" && !S.members && !isEdited() ? T.table.none_yet : T.table.empty); td.colSpan = COLS.length; r.append(td); $("tbody").append(r); }
+  if (!rows.length) { const r = el("tr"), td = el("td", "empty", view === "covered" && !S.members && !isEdited() ? T.table.none_yet : T.table.empty); td.colSpan = cols.length; r.append(td); $("tbody").append(r); }
   renderPager(rows.length, pages);
 }
 function renderPager(total, pages) {
@@ -544,6 +618,62 @@ function renderPager(total, pages) {
   p.append(btn("›", page + 1, false, page >= pages - 1));
 }
 const ro = new ResizeObserver(() => { if (S && route.name === "tokens") renderTable(); });
+
+// ---- column picker (modal): grouped checkboxes + ordered list (drag, or arrow buttons for keyboard / touch) ----
+let dragK = null;
+function openPicker() { openModal(T.picker.title, pickerBody()); }
+function renderPicker(focus) {
+  hideTip(); $("mBody").replaceChildren(pickerBody());
+  const f = focus && $("mBody").querySelector(`[data-f="${focus}"]`);
+  (f && !f.disabled ? f : $("mBody").querySelector("input:not(:disabled)") || $("mClose")).focus();
+}
+function pickerUpdate(ids, focus) { setColumns(ids); renderPicker(focus); }
+function pickerBody() {
+  const P = T.picker, max = S.columns.max, full = chosen.length >= max, wrap = el("div"), grid = el("div", "picker");
+  wrap.append(el("div", "pnote" + (full ? " warn" : ""), fill(P.chosen, { n: chosen.length, max }) + (full ? " · " + fill(P.max_reached, { max }) : "")));
+  const left = el("div"), avail = availableCols();
+  for (const [g, label] of Object.entries(T.column_groups)) {
+    const ids = avail.filter((k) => COL[k].group === g); if (!ids.length) continue;
+    left.append(el("h3", null, label));
+    for (const k of ids) {
+      const c = COL[k], on = chosen.includes(k), row = el("div", "pk" + (!on && full ? " off" : "")), box = el("input");
+      box.type = "checkbox"; box.checked = on; box.dataset.f = "cb:" + k; box.setAttribute("aria-label", colText(c).title);
+      box.disabled = (!on && full) || (on && chosen.length === 1);   // max reached / keep at least one column
+      box.onchange = () => pickerUpdate(box.checked ? [...chosen, k] : chosen.filter((x) => x !== k), "cb:" + k);
+      const lab = tipButton(c, colText(c).title, false);
+      lab.onclick = () => { if (lastPointer === "touch" && tipFor !== k) { showTip(lab, c, false); return; } if (!box.disabled) { box.checked = !box.checked; box.onchange(); } };
+      row.append(box, lab); left.append(row);
+    }
+  }
+  const right = el("div"), ol = el("ol", "order");
+  right.append(el("h3", null, P.shown), el("div", "pnote", P.hint));
+  const fixed = el("li", "fixed"); fixed.title = P.token_fixed; fixed.append(el("span", "grip", "⋮⋮"), el("span", "nm2", colText(COL.token).title), el("span", "grp", P.token_fixed)); ol.append(fixed);
+  chosen.forEach((k, i) => {
+    const li = el("li"), btn = (text, label, f, disabled, ids) => { const b = el("button", null, text); b.type = "button"; b.title = label; b.setAttribute("aria-label", label + ": " + colText(COL[k]).title);
+      b.dataset.f = f + ":" + k; b.disabled = disabled; b.onclick = () => pickerUpdate(ids(), f + ":" + k); return b; };
+    const swap = (d) => () => { const ids = [...chosen]; [ids[i], ids[i + d]] = [ids[i + d], ids[i]]; return ids; };
+    li.draggable = true; li.dataset.k = k;
+    li.append(el("span", "grip", "⋮⋮"), el("span", "nm2", colText(COL[k]).short || colText(COL[k]).title), el("span", "grp", T.column_groups[COL[k].group]),
+      btn("↑", P.up, "up", i === 0, swap(-1)), btn("↓", P.down, "dn", i === chosen.length - 1, swap(1)),
+      btn("✕", P.remove, "rm", chosen.length === 1, () => chosen.filter((x) => x !== k)));
+    li.ondragstart = (e) => { dragK = k; li.classList.add("drag"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", k); };
+    li.ondragend = () => { dragK = null; li.classList.remove("drag"); };
+    li.ondragover = (e) => { if (dragK && dragK !== k) { e.preventDefault(); li.classList.add("over"); } };
+    li.ondragleave = () => li.classList.remove("over");
+    li.ondrop = (e) => {  // dragging down lands after the target, dragging up before it
+      e.preventDefault(); li.classList.remove("over"); if (!dragK || dragK === k) return;
+      const from = chosen.indexOf(dragK), ids = chosen.filter((x) => x !== dragK); ids.splice(ids.indexOf(k) + (from < i ? 1 : 0), 0, dragK); pickerUpdate(ids);
+    };
+    ol.append(li);
+  });
+  right.append(ol);
+  grid.append(left, right);
+  const foot = el("div", "pfoot"), restore = el("button", null, P.restore), done = el("button", "done", P.done);
+  restore.onclick = () => { try { localStorage.removeItem(COL_KEY); } catch { /* nothing stored */ } setColumns(defaultCols(), false); renderPicker(); };
+  done.onclick = closeModal;
+  foot.append(el("span", "sub", P.stored), restore, done);
+  wrap.append(grid, foot); return wrap;
+}
 
 // ---- methodology view ------------------------------------------------------------------------------------
 function criteriaRows() {
@@ -726,6 +856,7 @@ async function load() {
   S = next; T = S.texts;
   document.body.classList.toggle("public", S.mode === "public");
   if (S.mode !== "public" && (!edited || !isEdited())) { edited = { ...S.criteria }; whatIf = null; }
+  if (!chosen) loadColumns();
   renderAll(); renderMarket();
   if (S.run && S.run.running) pollRun();
 }

@@ -18,6 +18,13 @@ coverage:
   holder_snapshot_hours: 6         # Jupiter holder count stored at most this often (holder history)
   stale_after_minutes: 120         # the list is marked stale when the last refresh is older
 
+site:                              # website Tokens table (visitors' column choice is kept in their browser only)
+  columns_max: 9                   # columns a visitor can show at once (Token is always shown and not counted)
+  default_columns: [price, change_24h, chart_7d, mcap, top10, holders, docs]   # "unlock" is selectable, not default
+
+unlocks:
+  public: false                    # DefiLlama terms not cleared (user decision 2026-10-09): unlock column admin-only
+
 profiles:                          # `python sieve.py profiles` — links, native check, supply, logos
   refresh_hours: 24
   max_per_run: 60                  # CoinGecko lookups are ~20 s apart -> ~20 min for 60 tokens
