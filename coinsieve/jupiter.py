@@ -18,6 +18,19 @@ log = logging.getLogger(__name__)
 SEARCH_BATCH = 100
 
 
+def bought_sold_usd(t):
+    """(bought, sold) 24h USD volume across all pools, or (None, None) when Jupiter has neither.
+
+    Verified 2026-10-09: a token with only sells had sellVolume/numSells but no buyVolume/numBuys key,
+    so a missing side next to a present one is 0 (Jupiter omits zero values, as with audit keys).
+    """
+    s24 = (t or {}).get("stats24h") or {}
+    b, s = s24.get("buyVolume"), s24.get("sellVolume")
+    if b is None and s is None:
+        return None, None
+    return round(b or 0, 2), round(s or 0, 2)
+
+
 class Jupiter(ThrottledClient):
     def tokens(self, path):
         data = self._get(path)

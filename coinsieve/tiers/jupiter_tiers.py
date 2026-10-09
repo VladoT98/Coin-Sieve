@@ -6,6 +6,7 @@ Everything else is only counted — evaluating all ~3,900 tokens every run would
 import logging
 from datetime import datetime
 
+from coinsieve.jupiter import bought_sold_usd
 from coinsieve.tiers import TierRun
 
 log = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ def jup_metrics(t, now):
     age_d = (now - datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()) / 86400 if created else None
     vol = (s24.get("buyVolume") or 0) + (s24.get("sellVolume") or 0)
     org_vol = (s24.get("buyOrganicVolume") or 0) + (s24.get("sellOrganicVolume") or 0)
+    bought, sold = bought_sold_usd(t)
     return {
         "address": t["id"],
         "symbol": t.get("symbol"),
@@ -52,6 +54,8 @@ def jup_metrics(t, now):
         "organic_volume_pct": round(org_vol / vol * 100, 1) if vol else None,
         "holders": t.get("holderCount"),
         "holder_change_24h_pct": s24.get("holderChange"),
+        "bought_usd_h24": bought,
+        "sold_usd_h24": sold,
         "organic_score": t.get("organicScore"),
         # audit keys are omitted when false/unknown -> treat missing as not disabled (strict)
         "mint_authority_disabled": audit.get("mintAuthorityDisabled") is True,

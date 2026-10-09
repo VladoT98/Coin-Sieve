@@ -5,6 +5,7 @@ Usage:
     python sieve.py digest daily|weekly|alerts [--post]                  # dry run unless --post (TEST chat)
     python sieve.py telegram-check                                      # one test line to the TEST chat
     python sieve.py track-record                                        # what happened after tier entries
+    python sieve.py charts [--max-calls N]                              # refresh price sparklines (also after run)
     python sieve.py web                                                 # private dashboard (127.0.0.1:8765)
 """
 import argparse
@@ -17,7 +18,7 @@ from pathlib import Path
 import yaml
 from dotenv import dotenv_values
 
-from coinsieve import card, funnel, logos, membership, track_record
+from coinsieve import card, charts, funnel, logos, membership, track_record
 from coinsieve.dexscreener import DexScreener
 from coinsieve.digest import (TIER_LABEL, alerts_text, blocked_reason, card_stats, daily_caption, display_name,
                               record_line, weekly_caption, zero_text)
@@ -82,6 +83,26 @@ def cmd_run(cfg, tiers):
     print_events(events, {t: len(store.current_members(t)) for t in ALL_TIERS})
     print(f"Track record snapshots recorded this run: {recorded}")
     store.close()
+    cmd_charts(cfg)
+
+
+def cmd_charts(cfg, max_calls=None):
+    """Refresh cached price sparklines (budgeted; GeckoTerminal's free limit is tight). Never raises."""
+    api = cfg["api"]
+    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
+    gt = GeckoTerminal(api["geckoterminal_base"], api["timeout_s"], api["geckoterminal_min_interval_s"],
+                       api["retries"], backoff_s=api["geckoterminal_backoff_s"])
+    store = Store(cfg["storage"]["db_path"])
+    try:
+        st = charts.fetch(store, cfg, gt, dex, max_calls=max_calls)
+        print(f"Price charts: {st['fetched']} updated, {st['empty']} without candles, {st['failed']} failed "
+              f"(of {st['planned']} due)" + (" - stopped on GeckoTerminal rate limit, cached charts kept"
+                                             if st["rate_limited"] else ""))
+    except Exception as e:  # charts are cosmetic; never fail a run over them
+        log.exception("chart refresh failed: %s", e)
+        print(f"Price charts: refresh failed ({e}); cached charts kept")
+    finally:
+        store.close()
 
 
 def bootstrap_end(store, tier, pub):
@@ -329,6 +350,8 @@ def main():
                        help="daily only: ignore post history and record nothing (design previews)")
     sub.add_parser("telegram-check", help="send one test line to the TEST chat")
     sub.add_parser("track-record", help="print track-record stats per tier and checkpoint")
+    p_ch = sub.add_parser("charts", help="refresh cached price sparklines now (also runs after every `run`)")
+    p_ch.add_argument("--max-calls", type=int, default=None, help="GeckoTerminal calls (default: charts.max_calls_per_run)")
     p_web = sub.add_parser("web", help="private dashboard on http://127.0.0.1:<port>")
     p_web.add_argument("--port", type=int, default=8765)
     p_web.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
@@ -349,6 +372,8 @@ def main():
         return cmd_run(cfg, tiers)
     if command == "track-record":
         return cmd_track_record(cfg)
+    if command == "charts":
+        return cmd_charts(cfg, args.max_calls)
     if command == "web":
         from coinsieve.dashboard import serve
         return serve(args.config, args.port, open_browser=not args.no_browser, public=args.public)

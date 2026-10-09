@@ -63,6 +63,22 @@ class WordingTest(unittest.TestCase):
                 self.assertNotIn(word, low)
             self.assertIsNone(re.search(r"\bbuy", low))
 
+    def test_new_column_texts_are_covered(self):
+        """The bought/sold and price-chart texts exist (so the scan above covers them) and stay neutral."""
+        import re
+        from pathlib import Path
+        html = Path(__file__).parents[1].joinpath("coinsieve", "dashboard.html").read_text(encoding="utf-8")
+        for needle in ('label: "Bought / sold"', "flow: \"Share of the last 24 hours' trading volume",
+                       'chart: "Hourly closing prices', '" Price"'):
+            self.assertIn(needle, html)
+        texts = re.findall(r'^\s+(?:flow|chart): "([^"]+)"', html, re.M)
+        self.assertEqual(len(texts), 2)
+        for text in texts:
+            low = text.lower()
+            for word in ("safe", "gem", "verified", "sentiment", "bullish", "bearish", "signal", "recommend"):
+                self.assertNotIn(word, low)
+            self.assertIsNone(re.search(r"\bbuy", low))
+
 
 CFG = {"age": {"min_hours": 6, "max_hours": 48},
        "filters": {"min_liquidity_usd": 20000, "min_volume_h24_usd": 50000, "min_txns_h24": 300, "min_socials": 1,
@@ -134,3 +150,19 @@ class WhatIfTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LogoEndpointTest(unittest.TestCase):
+    def test_logo_url_only_comes_from_stored_metrics(self):
+        from unittest import mock
+        from coinsieve.dashboard import App
+        app = App.__new__(App)  # skip config/db loading
+        app.icons, app.bad_icons, app.logo_dir = {}, {}, "unused"
+        with mock.patch("coinsieve.logos.logo_png") as fetch:
+            self.assertIsNone(app.logo("UnknownAddr1111111111111111111111111"))
+            fetch.assert_not_called()  # unknown address -> nothing fetched
+            app.icons["A"] = "https://example.com/x.png"
+            fetch.return_value = None
+            self.assertIsNone(app.logo("A"))
+            self.assertIsNone(app.logo("A"))
+            fetch.assert_called_once()  # failed logos are not retried

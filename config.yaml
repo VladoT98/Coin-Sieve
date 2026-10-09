@@ -168,9 +168,41 @@ api:
   rugcheck_base: https://api.rugcheck.xyz/v1
   rugcheck_min_interval_s: 1.0       # header X-Rate-Limit-Limit: 15; 1/s gave no 429s
   jupiter_min_interval_s: 1.0
+  # Dashboard live prices: Jupiter Price v3 (no key, ≤ 50 ids per call; fields usdPrice, priceChange24h).
+  jupiter_price_url: https://lite-api.jup.ag/price/v3
+  price_refresh_s: 15                # browser polls visible rows this often; server caches this long
   geckoterminal_base: https://api.geckoterminal.com/api/v2
   geckoterminal_min_interval_s: 7.0  # 429s seen after ~6 calls at 2.1 s spacing
   geckoterminal_backoff_s: 20        # after a 429: wait 20 s, then 40 s
+
+market:                       # dashboard top strip; fetched by the dashboard server, cached in SQLite
+  refresh_minutes: 10
+  stale_after_minutes: 60     # older numbers are dimmed and marked "stale"
+  change_window_hours: [20, 28]   # Total open-interest 24h change needs a stored snapshot this old
+  keep_days: 8
+  coingecko_spacing_s: 6      # keyless CoinGecko answered 429 after ~3 quick calls (2026-10-09)
+  urls:
+    fng: https://api.alternative.me/fng/?limit=2
+    coingecko: https://api.coingecko.com/api/v3
+    binance_futures: https://fapi.binance.com
+    bybit: https://api.bybit.com
+
+charts:                       # dashboard price sparklines (GeckoTerminal hourly OHLCV, cached in SQLite)
+  history_hours:              # window shown per tier ("48h Price" / "7d Price")
+    new_launches: 48
+    emerging: 168
+    established: 168
+  refresh_minutes:            # a token's series is re-fetched at most this often
+    new_launches: 30
+    emerging: 120
+    established: 240
+  tier_order: [new_launches, emerging, established]   # fetch priority between tiers
+  max_calls_per_run: 40       # OHLCV calls at the end of each `run` (~7 s apart -> ~5 min)
+  include_failing: false      # failing tokens are fetched only after they were viewed on the dashboard
+  demand_window_minutes: 30   # rows shown on the dashboard this recently are fetched first
+  pool_refresh_hours: 12      # re-resolve the highest-liquidity pool (DexScreener) after this long
+  stale_after_hours: 6        # older series are drawn dimmed and marked "stale"
+  min_points: 2               # fewer stored closes than this -> "–", never a line
 
 storage:
   db_path: data/coinsieve.db

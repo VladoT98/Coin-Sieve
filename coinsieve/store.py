@@ -114,6 +114,28 @@ CREATE TABLE IF NOT EXISTS zero_notices (
     posted_at REAL NOT NULL,
     PRIMARY KEY (day, chat)
 );
+-- Dashboard price sparklines: hourly closes from GeckoTerminal for the token's highest-liquidity pool.
+-- A failed fetch only sets attempted_at/error; points and fetched_at keep the last good series.
+CREATE TABLE IF NOT EXISTS chart_series (
+    address          TEXT PRIMARY KEY,
+    pool             TEXT,
+    pool_resolved_at REAL,
+    hours            INTEGER,                -- history window that was requested
+    points           TEXT,                   -- JSON [[ts, close], ...] oldest first; NULL = never fetched
+    fetched_at       REAL,                   -- last successful fetch
+    attempted_at     REAL,                   -- last attempt (success or not)
+    error            TEXT                    -- last failure, NULL after a success
+);
+-- Dashboard market strip (market.py): one JSON snapshot per refresh, kept `market.keep_days`.
+CREATE TABLE IF NOT EXISTS market_snapshots (
+    ts   REAL PRIMARY KEY,
+    data TEXT NOT NULL
+);
+-- Rows the dashboard showed recently; the chart fetcher serves these first.
+CREATE TABLE IF NOT EXISTS chart_demand (
+    address TEXT PRIMARY KEY,
+    ts      REAL NOT NULL
+);
 """
 
 # Stage 3 first draft keyed these tables without `chat`. Recreate only if empty.
@@ -302,6 +324,54 @@ class Store:
     def tier_first_event_ts(self, tier):
         """When a tier was first populated; events right after it are the initial bootstrap."""
         return self.db.execute("SELECT MIN(ts) FROM tier_events WHERE tier = ?", (tier,)).fetchone()[0]
+
+    # --- chart cache ---
+    def chart_rows(self, addresses=None):
+        """{address: row dict} from chart_series (all rows, or only the given addresses)."""
+        if addresses is None:
+            rows = self.db.execute("SELECT * FROM chart_series")
+        else:
+            addresses = list(addresses)
+            if not addresses:
+                return {}
+            rows = self.db.execute(f"SELECT * FROM chart_series WHERE address IN ({','.join('?' * len(addresses))})",
+                                   addresses)
+        return {r["address"]: dict(r) for r in rows}
+
+    def set_chart_pool(self, address, pool, now):
+        self.db.execute("INSERT INTO chart_series (address, pool, pool_resolved_at) VALUES (?, ?, ?) "
+                        "ON CONFLICT(address) DO UPDATE SET pool = excluded.pool, pool_resolved_at = excluded.pool_resolved_at",
+                        (address, pool, now))
+
+    def save_chart_points(self, address, hours, points, now):
+        self.db.execute("INSERT INTO chart_series (address, hours, points, fetched_at, attempted_at, error) "
+                        "VALUES (?, ?, ?, ?, ?, NULL) ON CONFLICT(address) DO UPDATE SET hours = excluded.hours, "
+                        "points = excluded.points, fetched_at = excluded.fetched_at, "
+                        "attempted_at = excluded.attempted_at, error = NULL",
+                        (address, hours, json.dumps(points), now, now))
+
+    def chart_failed(self, address, error, now):
+        """Record a failed attempt; the last good series is kept."""
+        self.db.execute("INSERT INTO chart_series (address, attempted_at, error) VALUES (?, ?, ?) "
+                        "ON CONFLICT(address) DO UPDATE SET attempted_at = excluded.attempted_at, error = excluded.error",
+                        (address, now, str(error)[:300]))
+
+    def add_chart_demand(self, addresses, now):
+        self.db.executemany("INSERT OR REPLACE INTO chart_demand (address, ts) VALUES (?, ?)",
+                            [(a, now) for a in addresses])
+
+    def chart_demand_since(self, since):
+        return {r[0] for r in self.db.execute("SELECT address FROM chart_demand WHERE ts >= ?", (since,))}
+
+    # --- market strip ---
+    def add_market_snapshot(self, data, now, keep_days):
+        self.db.execute("INSERT OR REPLACE INTO market_snapshots (ts, data) VALUES (?, ?)", (now, json.dumps(data)))
+        self.db.execute("DELETE FROM market_snapshots WHERE ts < ?", (now - keep_days * 86400,))
+
+    def market_snapshots(self, since=0):
+        """[{ts, data}] oldest first."""
+        return [{"ts": r[0], "data": json.loads(r[1])}
+                for r in self.db.execute("SELECT ts, data FROM market_snapshots WHERE ts >= ? ORDER BY ts", (since,))]
 
     def commit(self):
         self.db.commit()

@@ -10,6 +10,7 @@
     --text: #ececf1; --muted: #8b8c96; --dim: #5c5d66;
     --green: #2fbd71; --red: #f0475b; --amber: #f2b33d; --blue: #5ea0ff; --violet: #a685ff; --gold: #f2c94c;
     --nl: #5ea0ff; --em: #a685ff; --es: #f2b33d;
+    --in: #3fb6b2; --out: #d08a5c;  /* bought / sold bar: neutral pair, deliberately not green/red */
     --sidew: 220px; --rightw: 370px; --row: 44px;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
   }
@@ -17,7 +18,7 @@
   html, body { height: 100%; }
   body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font: 13px/1.35 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
   button, input { font: inherit; color: inherit; }
-  .app { height: 100vh; display: grid; grid-template-columns: var(--sidew) minmax(0, 1fr) var(--rightw); grid-template-rows: 46px minmax(0, 1fr); }
+  .app { height: 100vh; display: grid; grid-template-columns: var(--sidew) minmax(0, 1fr) var(--rightw); grid-template-rows: auto minmax(0, 1fr); }
   body.public .admin-only { display: none !important; }
 
   /* sidebar */
@@ -41,24 +42,22 @@
   .runstat { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .runstat.ok { color: var(--green); } .runstat.err { color: var(--red); } .runstat.busy { color: var(--amber); }
 
-  /* ticker */
-  .ticker { grid-column: 2 / 4; display: flex; align-items: center; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--side); overflow: hidden; min-width: 0; white-space: nowrap; }
-  .ticker .tl { color: var(--muted); font-weight: 700; font-size: 12px; margin-right: 8px; flex: none; }
-  .tk { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 13px; border: 0; background: none; cursor: pointer; }
-  .tk:hover { background: var(--hover); }
-  .tk .rank { color: var(--dim); font-weight: 600; } .tk .dot { width: 7px; height: 7px; border-radius: 50%; }
-  .k.entered { color: var(--green); } .k.left { color: var(--red); } .k.graduated { color: var(--violet); }
-  .tk .ago { color: var(--muted); font-weight: 500; font-size: 12px; }
-  .tk.more { color: var(--text); background: var(--panel2); border: 1px solid var(--line); margin-left: auto; }
+
+  /* market strip */
+  .market { grid-column: 2 / 4; display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--side); min-width: 0; }
+  .mcard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; cursor: help; }
+  .mcard.stale { opacity: .55; }
+  .mcard .mt { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcard .big { font: 800 19px var(--mono); white-space: nowrap; }
+  .mrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 0; white-space: nowrap; }
+  .mrow .ml { color: var(--muted); font-size: 12px; } .mrow .mv { font: 700 14px var(--mono); }
+  .mchg { font: 700 11.5px var(--mono); margin-left: 6px; }
+  .fng { display: flex; align-items: center; gap: 12px; } .fng svg { flex: none; }
+  .fng .lbl { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 5px; font-size: 11.5px; font-weight: 700; color: #0d0e11; }
+  .fng .yd { color: var(--muted); font-size: 11.5px; margin-top: 4px; }
 
   /* center */
   .center { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
-  .head { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-  .head h1 { margin: 0; font-size: 18px; font-weight: 800; white-space: nowrap; }
-  .head .subt { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
-  .stats { margin-left: auto; display: flex; gap: 18px; white-space: nowrap; }
-  .stat { text-align: right; } .stat .l { color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-  .stat .v { font: 700 15px var(--mono); } .stat .d { font: 700 11px var(--mono); margin-left: 4px; }
   .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
   .tf { display: flex; gap: 2px; }
   .tf button { border: 0; background: none; color: var(--muted); font-weight: 600; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
@@ -80,10 +79,21 @@
   .two { display: flex; flex-direction: column; line-height: 1.25; } .two > * { overflow: hidden; text-overflow: ellipsis; }
   .r .two { align-items: flex-end; }
   .sub { color: var(--muted); font-size: 11.5px; font-weight: 500; }
-  .sym { font-weight: 800; } .star { color: var(--gold); margin-right: 4px; } .warn { color: var(--amber); margin-left: 5px; }
+  .sym { font-weight: 800; } .warn { color: var(--amber); margin-left: 5px; }
   .st { font-weight: 700; } .st.pass { color: var(--green); } .st.fail { color: var(--red); } .st.unknown { color: var(--amber); }
   .chg { font: 700 11px var(--mono); margin-left: 5px; } .chg.up { color: var(--green); } .chg.down { color: var(--red); }
-  .why { color: var(--muted); } .why.ok { color: #7fd3a5; }
+  .why { color: var(--muted); } .why.ok { color: #7fd3a5; } .why .cnt { font: 700 11.5px var(--mono); margin-right: 5px; }
+  .px .pv { font: 700 13.5px var(--mono); color: var(--text); } .px .sub { font-family: var(--mono); } .px.flash-up { animation: fu 1.2s; } .px.flash-down { animation: fd 1.2s; }
+  @keyframes fu { from { background: rgba(46,204,113,.3); } } @keyframes fd { from { background: rgba(235,87,87,.3); } }
+  .sparkcell { display: flex; align-items: center; justify-content: flex-end; gap: 7px; } .sparkcell.stale { opacity: .5; }
+  .sparkwrap svg { display: block; width: 64px; height: 26px; }
+  .spark.up { color: var(--green); } .spark.down { color: var(--red); } .spark.flat { color: var(--muted); }
+  .flow { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .flow .vbar { display: flex; width: 100%; max-width: 92px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
+  .flow .in { background: var(--in); } .flow .out { background: var(--out); }
+  .flowbox { margin-top: 6px; } .flowbox .flow { align-items: stretch; } .flowbox .vbar { max-width: none; height: 8px; }
+  .flowbox .lgd { display: flex; justify-content: space-between; font: 600 12px var(--mono); }
+  .flowbox .lgd .a { color: var(--in); } .flowbox .lgd .b { color: var(--out); }
   .pos { color: var(--green); } .neg { color: var(--red); } .mid { color: var(--amber); }
   .empty { color: var(--muted); text-align: center; cursor: default; }
   .pager { display: flex; align-items: center; gap: 4px; padding: 7px 12px; border-top: 1px solid var(--line); }
@@ -101,9 +111,13 @@
   .rbody { flex: 1; min-height: 0; overflow: hidden; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
   .tok { display: flex; align-items: center; gap: 10px; }
   .av { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #0d0e11; font-size: 16px; }
+  .av, .coin { position: relative; overflow: hidden; }
+  .av img, .coin img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .coin { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 800 10px var(--mono); color: #0d0e11; }
+  .tokcell { display: flex; align-items: center; gap: 8px; min-width: 0; } .tokcell .two { min-width: 0; }
   .tok .nm { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tok .ds { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .badge { font: 800 10px var(--mono); padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; }
+  .badge { display: inline-grid; place-items: center; padding: 3px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
   .warnstrip { background: rgba(242, 179, 61, .1); border: 1px solid rgba(242, 179, 61, .35); color: #f6d38b; border-radius: 8px; padding: 6px 10px; font-size: 12px; }
   .lrow { display: flex; gap: 6px; }
   .lb { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 6px;
@@ -159,9 +173,6 @@
   .modal .mh { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 800; font-size: 15px; }
   .modal .mh button { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
   .modal .mb { overflow: auto; padding: 8px 16px 14px; }
-  .evrow { display: grid; grid-template-columns: 10px 110px 90px 110px 60px minmax(0, 1fr); gap: 10px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
-  .evrow:hover { background: var(--hover); } .evrow .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .evrow b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .evrow .m { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gl h3 { margin: 14px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .gl dl { margin: 0; display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; } .gl dt { font-weight: 700; } .gl dd { margin: 0; color: #c9cad3; }
 
@@ -176,11 +187,11 @@
     .brand { justify-content: center; padding: 2px 0 14px; } .sidelink { justify-content: center; }
     .nav button { justify-content: center; position: relative; padding: 9px 0; }
     .nav .cnt { position: absolute; top: 0; right: 0; font-size: 9.5px; padding: 0 5px; }
-    .stats { gap: 12px; } th, td { padding: 0 7px; } .search { width: 190px; }
+    th, td { padding: 0 7px; } .search { width: 190px; }
   }
   @media (max-width: 1100px) {
     body { overflow: auto; } .app { height: auto; grid-template-columns: 1fr; grid-template-rows: auto; }
-    .side, .ticker, .center, .right { grid-column: 1; grid-row: auto; } .center { min-height: 640px; } .twrap { overflow-x: auto; } table { min-width: 900px; }
+    .side, .market, .center, .right { grid-column: 1; grid-row: auto; } .market { grid-template-columns: 1fr 1fr; } .center { min-height: 640px; } .twrap { overflow-x: auto; } table { min-width: 900px; }
   }
 </style>
 </head>
@@ -198,12 +209,8 @@
       <div class="runstat" id="runStatus">idle</div>
     </div>
   </aside>
-  <div class="ticker" id="ticker"></div>
+  <div class="market" id="market"></div>
   <section class="center">
-    <div class="head">
-      <div><h1 id="title"></h1><div class="subt" id="subtitle"></div></div>
-      <div class="stats" id="stats"></div>
-    </div>
     <div class="bar">
       <div class="tf" id="tf"></div><div class="sep"></div>
       <label class="search"><span>⌕</span><input id="search" placeholder="Search symbol, name, address"></label>
@@ -228,6 +235,19 @@ const TIER = {
   emerging: { short: "EM", color: "var(--em)", sub: "7–180 days · $1M–50M market cap" },
   established: { short: "ES", color: "var(--es)", sub: "1+ year · $200M+ market cap" },
 };
+// Tier icons (Lucide-style strokes): sparkles = fresh, sprout = growing, landmark = mature. Static markup only.
+const ICON_PATHS = {
+  new_launches: ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z", "M20 3v4", "M22 5h-4"],
+  emerging: ["M7 20h10", "M10 20c5.5-2.5.8-6.4 3-10", "M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z", "M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"],
+  established: ["M3 22h18", "M6 18v-7", "M10 18v-7", "M14 18v-7", "M18 18v-7", "M11.12 2.198a2 2 0 0 1 1.76.006l7.866 3.847c.476.233.31.949-.22.949H3.474c-.53 0-.695-.716-.22-.949z"],
+};
+function tierIcon(key, size) {
+  const ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg");
+  for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor",
+    "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) s.setAttribute(k, v);
+  for (const d of ICON_PATHS[key]) { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); s.append(p); }
+  return s;
+}
 const PRESET_TEXT = { strict: "Fewer tokens, stronger numbers on every check.", balanced: "The default screen.",
                       loose: "More tokens, weaker numbers — more noise." };
 // Plain-language explanations (shown as tooltips and in the "How to read this" guide). Wording rules apply here too.
@@ -252,6 +272,12 @@ const EXPLAIN = {
   socials: "Number of social links (X, Telegram, …) the project listed on DexScreener.",
   type: "Stablecoins, staking tokens and tokenised stocks are excluded — they are not project tokens.",
   age: "Time since the token's first trading pool was created.",
+  fng: "A third-party gauge of the overall crypto market's mood, from 0 (extreme fear) to 100 (extreme greed), built from price swings, momentum, social media and search trends. Updated once a day. It describes the mood — not where prices go next.",
+  mktcap: "Combined market value of all tracked cryptocurrencies, its change over 24 hours, and the dollar value traded in the last 24 hours.",
+  oi: "Open interest: the dollar value of futures and perpetual contracts that are still open. Total = summed across about 100 derivatives exchanges. Solana = SOL perpetual contracts on the two largest venues for them. The Total 24h change appears once a day of history is stored.",
+  dvol: "Dollar value of futures and perpetual contracts traded in the last 24 hours. Total = all derivatives exchanges summed. Solana = SOL perpetual contracts on the two largest venues for them.",
+  flow: "Share of the last 24 hours' trading volume (USD, all pools, Jupiter data) where traders acquired the token (teal) versus sold it (copper). One large wallet, or a bot trading with itself, can tilt it. It describes past trades only — not where the price goes next.",
+  chart: "Hourly closing prices of the token's largest pool (GeckoTerminal). Hours without trades have no candle, so the line joins the hours that had trades. The % compares the first and last point of this same line.",
 };
 const FAIL_LABEL = { age_min: "too young", age_max: "too old", launchpad: "still on launchpad", liquidity: "low liquidity",
   volume: "low volume", txns: "few trades", socials: "no socials listed", creator: "serial creator", lp: "liquidity not locked",
@@ -263,6 +289,7 @@ const CHECK_EXPLAIN = { age_min: "age", age_max: "age", launchpad: "launchpad", 
   mcap_max: "mcap", holders: "holders", organic: "organic", mint: "mint", freeze: "freeze", top: "tophold" };
 
 let S = null, tier = "new_launches", edited = {}, results = null, impact = {}, sortKey = null, sortDir = 1, statusFilter = "all";
+let prices = {}, priceTimer = null;  // address -> {price, change_24h}; polled for the rows on screen
 let page = 0, pageSize = 10, selected = null, rightTab = "token", evalTimer = null, pendingSelect = null, showAdvanced = false;
 
 const $ = (id) => document.getElementById(id);
@@ -306,10 +333,9 @@ function showGlossary() {
                ["Established", "Tokens over a year old with a $200M+ market cap. 'Established' describes size and age — not quality."]]],
     ["Status", [["● PASS", "Passes every check with the current filters."], ["● FAIL", "At least one check failed — the list shows which."],
                 ["● UNKNOWN", "Never reached a later check (e.g. RugCheck), so it is decided on the next refresh."],
-                ["★ Member", "Currently listed in the tier. Members get a short grace period so the list doesn't flicker."],
                 ["⚠ Concentrated", `Top wallets hold at least ${S.warn_pct}% of supply. Not necessarily a problem (can be team, treasury or exchange wallets), but big holders selling can move the price sharply.`]]],
     ["Numbers", [["Liquidity", EXPLAIN.liquidity], ["Liquidity locked", EXPLAIN.lp], ["Market cap", EXPLAIN.mcap], ["FDV", EXPLAIN.fdv],
-                 ["Volume 24h", EXPLAIN.volume], ["Trades 24h", EXPLAIN.txns], ["Holders", EXPLAIN.holders], ["Holder growth", EXPLAIN.growth],
+                 ["Volume 24h", EXPLAIN.volume], ["Bought / sold", EXPLAIN.flow], ["Price chart", EXPLAIN.chart], ["Trades 24h", EXPLAIN.txns], ["Holders", EXPLAIN.holders], ["Holder growth", EXPLAIN.growth],
                  ["Top 10 wallets", EXPLAIN.top10], ["Largest wallet", EXPLAIN.top1], ["Top wallets (Jupiter)", EXPLAIN.tophold],
                  ["Creator's launches", EXPLAIN.creator], ["Organic score", EXPLAIN.organic], ["Mint authority", EXPLAIN.mint],
                  ["Freeze authority", EXPLAIN.freeze], ["RugCheck", EXPLAIN.rugcheck]]],
@@ -325,51 +351,148 @@ function two(main, sub, mainCls = "", subCls = "sub") { const d = el("div", "two
 const STATUS = { key: "status", label: "Status", w: 10, get: (t) => ({ pass: 0, unknown: 1, fail: 2 })[res(t).status],
   cell: (t) => { const r = res(t), s = el("span"); s.append(el("span", "st " + r.status, "● " + r.status.toUpperCase()));
     if (r.status !== r.saved) s.append(el("span", "chg " + (r.status === "pass" ? "up" : "down"), r.status === "pass" ? "▲" : "▼")); return s; } };
-const TOKEN = (sub) => ({ key: "symbol", label: "Token", w: 17, get: (t) => (t.metrics.symbol || "").toLowerCase(),
-  cell: (t) => { const d = el("div", "two"), top = el("span"); if (t.member) { const st = el("span", "star", "★"); st.title = "Tier member"; top.append(st); }
+// Round token avatar: letter in the tier colour, covered by the vetted logo from /api/logo when one exists.
+function coin(m, cls) {
+  const c = el("span", cls, (m.symbol || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
+  c.style.background = TIER[tier].color;
+  if (m.icon && ADDR.test(m.address)) {
+    const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = "/api/logo/" + m.address;
+    img.onerror = () => img.remove(); c.append(img);
+  }
+  return c;
+}
+const TOKEN = (sub, w = 17) => ({ key: "symbol", label: "Token", w, get: (t) => (t.metrics.symbol || "").toLowerCase(),
+  cell: (t) => { const row = el("div", "tokcell"), d = el("div", "two"), top = el("span"); row.append(coin(t.metrics, "coin"), d);
     top.append(el("span", "sym", t.metrics.symbol || "?"));
     if (isConcentrated(t.metrics)) { const w = el("span", "warn", "⚠"); w.title = `Top wallets hold ${pct(concentration(t.metrics))} of supply`; top.append(w); }
-    d.append(top, el("span", "sub", sub(t.metrics))); return d; } });
+    d.append(top, el("span", "sub", sub(t.metrics))); return row; } });
+// Live price; tiny values get a zero count like DexScreener: 0.0000040 → $0.0₅40
+const SUBS = "₀₁₂₃₄₅₆₇₈₉";
+function fmtPrice(v) {
+  if (v == null) return "–"; if (v >= 1) return "$" + num(v, v >= 1000 ? 0 : 2); if (v >= 0.0001) return "$" + Number(v.toPrecision(4));
+  const [mant, exp] = v.toExponential(3).split("e"), zeros = -Number(exp) - 1;  // zeros after the decimal point
+  return "$0.0" + [...String(zeros)].map((d) => SUBS[d]).join("") + mant.replace(".", "").replace(/0+$/, "");
+}
+function fillPrice(s, p) {  // price on top, 24h change below
+  const ch = p ? p.change_24h : null;
+  s.replaceChildren(el("span", "pv", p ? fmtPrice(p.price) : "–"), el("span", "sub " + tone(ch, 1), ch == null ? "" : signed(ch, 1, "% 24h")));
+  s.title = p && p.price != null ? `Current price (Jupiter), refreshed every ${S.price_refresh_s} s: $${p.price}` : "Price not available yet";
+}
+function priceCell(addr) { const s = el("div", "two px"), p = prices[addr]; s.dataset.addr = addr; s.dataset.v = p ? p.price ?? "" : ""; fillPrice(s, p); return s; }
+const PRICE = (w) => ({ key: "price", label: "Price", w, r: 1, num: 1, get: (t) => (prices[t.metrics.address] || {}).price ?? null,
+  cell: (t) => priceCell(t.metrics.address) });
+async function pollPrices() {
+  clearTimeout(priceTimer); priceTimer = setTimeout(pollPrices, S.price_refresh_s * 1000);
+  const spans = [...document.querySelectorAll(".px[data-addr]")];
+  if (document.hidden || !spans.length) return;
+  try {
+    const j = await api("/api/prices?ids=" + [...new Set(spans.map((s) => s.dataset.addr))].join(","));
+    Object.assign(prices, j.prices);
+    for (const s of document.querySelectorAll(".px[data-addr]")) {  // update in place; flash on change
+      const p = prices[s.dataset.addr], old = parseFloat(s.dataset.v);
+      if (!p) continue; fillPrice(s, p);
+      if (p.price != null && !isNaN(old) && p.price !== old) { s.classList.remove("flash-up", "flash-down"); void s.offsetWidth; s.classList.add(p.price > old ? "flash-up" : "flash-down"); }
+      s.dataset.v = p.price ?? "";
+    }
+  } catch (e) { /* keep last prices; retry next tick */ }
+}
 const WHY = (w) => ({ key: "why", label: "Why", w, get: (t) => realChecks(res(t)).filter((c) => c.ok === false).length,
-  cell: (t, td) => { const r = res(t), checks = realChecks(r);
-    if (r.status === "pass") return el("span", "why ok", `✓ all ${mergedChecks(checks).length} checks passed`);
-    if (r.status === "unknown") { td.title = "Creator history and RugCheck run on the next refresh"; return el("span", "why", "waiting for next refresh"); }
-    const failed = checks.filter((c) => c.ok === false); td.title = failed.map((c) => `${c.label}: ${c.value} (${c.limit})`).join("\n");
-    return el("span", "why", [...new Set(failed.map((c) => FAIL_LABEL[c.id] || c.label.toLowerCase()))].join(", ") || r.reasons.map(label).join(", ")); } });
+  cell: (t, td) => { const r = res(t), checks = realChecks(r), merged = mergedChecks(checks);
+    let cls = "why", text;
+    if (r.status === "pass") { cls = "why ok"; text = "✓ all passed"; }
+    else if (r.status === "unknown") { td.title = "Creator history and RugCheck run on the next refresh"; text = "waiting for next refresh"; }
+    else { const failed = checks.filter((c) => c.ok === false); td.title = failed.map((c) => `${c.label}: ${c.value} (${c.limit})`).join("\n");
+      text = [...new Set(failed.map((c) => FAIL_LABEL[c.id] || c.label.toLowerCase()))].join(", ") || r.reasons.map(label).join(", "); }
+    const top = el("span", cls); top.append(el("span", "cnt", `${merged.filter((c) => c.ok === true).length}/${merged.length}`), text); return top; } });
 const n = (key, label, w, fmt, extra = {}) => ({ key, label, w, r: 1, num: 1, fmt, ...extra });
+// Price sparkline: SVG built server-side from stored numbers only (charts.py); % from the same series.
+const SVG_OK = /^<svg [^<>]*><polyline [^<>]*\/><\/svg>$/;
+const spanText = (h) => h >= 48 ? num(h / 24) + "d" : num(h) + "h";
+const chartLabel = () => { const h = S.tiers[tier].chart_hours; return (h >= 72 && h % 24 === 0 ? h / 24 + "d" : h + "h") + " Price"; };
+const CHART = (w) => ({ key: "chart", label: chartLabel, w, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null,
+  cell: (t, td) => { const c = t.chart;
+    if (!c || !SVG_OK.test(c.svg)) { td.title = "No price history stored yet (fetched in the background, a few tokens per run)"; return el("span", "sub", "–"); }
+    const d = el("div", "sparkcell" + (c.stale ? " stale" : "")), g = el("span", "sparkwrap"); g.innerHTML = c.svg;
+    const short = c.span_h < c.window_h * 0.9 ? spanText(c.span_h) : "";
+    d.append(g, two(signed(c.change_pct, 1, "%"), c.stale ? "stale" : short, tone(c.change_pct, 1)));
+    td.title = `${EXPLAIN.chart}\n\n${c.points} hourly closes over ${spanText(c.span_h)}: ${fmtPrice(c.first)} → ${fmtPrice(c.last)}` +
+               `\nUpdated ${ago(c.fetched_at)} ago` + (c.stale ? " — stale, newer data not fetched yet" : "");
+    return d; } });
+// Bought / sold: 24h USD volume split from Jupiter, shown as shares. Missing data -> "–".
+function flowShare(m) { const b = m.bought_usd_h24, s = m.sold_usd_h24; return b == null || s == null || b + s <= 0 ? null : b / (b + s) * 100; }
+function flowBar(m, cls = "flow") {
+  const p = flowShare(m), d = el("div", cls), bar = el("div", "vbar"), a = el("span", "in"), b = el("span", "out");
+  a.style.width = p + "%"; b.style.width = 100 - p + "%"; bar.append(a, b); d.append(bar); return d;
+}
+const flowTip = (m) => `${EXPLAIN.flow}\n\nBought ${usd(m.bought_usd_h24)} · sold ${usd(m.sold_usd_h24)} in the last 24h`;
+const FLOW = (w) => ({ key: "flow", label: "Bought / sold", w, r: 1, num: 1, get: (t) => flowShare(t.metrics),
+  cell: (t, td) => { const m = t.metrics, p = flowShare(m);
+    if (p == null) { td.title = "No 24h volume split from Jupiter for this token"; return el("span", "sub", "–"); }
+    const d = flowBar(m); d.append(el("span", "sub", `${num(p)}% / ${num(100 - p)}%`)); td.title = flowTip(m); return d; } });
 const COLS = {
-  new_launches: [STATUS, TOKEN((m) => [m.name, m.age_h == null ? "" : num(m.age_h, 1) + "h"].filter(Boolean).join(" · ")),
-    n("liquidity_usd", "Liquidity", 9, usd), n("volume_h24_usd", "Volume", 9, usd), n("txns_h24", "Trades", 8, compact),
-    n("holders", "Holders", 10, null, { cell: (t) => two(compact(t.metrics.holders), signed(t.metrics.holder_growth_per_h, 1, "/h"), "", "sub " + tone(t.metrics.holder_growth_per_h, 1)) }),
-    n("dev_mints", "Creator", 8, (v) => v == null ? "–" : num(v), { cls: (v) => v == null ? "" : v <= 1 ? "pos" : v <= 3 ? "mid" : "neg" }),
-    n("rc_lp_locked_pct", "Locked", 8, pct, { cls: (v) => v == null ? "" : v >= 95 ? "pos" : "neg" }),
-    n("rc_top10_holders_pct", "Top 10", 7, pct), WHY(14)],
-  jup: [STATUS, TOKEN((m) => [m.name, m.age_d == null ? "" : num(m.age_d) + "d"].filter(Boolean).join(" · ")),
-    n("mcap_usd", "MCap", 10, usd), n("liquidity_usd", "Liquidity", 9, usd), n("volume_h24_usd", "Volume", 9, usd),
-    n("holders", "Holders", 11, null, { cell: (t) => two(compact(t.metrics.holders), signed(t.metrics.holder_change_24h_pct, 1, "% 24h"), "", "sub " + tone(t.metrics.holder_change_24h_pct, 1)) }),
-    n("organic_score", "Organic", 8, (v) => num(v), { cls: (v) => v == null ? "" : v >= 70 ? "pos" : v >= 50 ? "mid" : "neg" }),
-    n("top_holders_pct", "Top wallets", 8, pct, { cls: (v) => v != null && v >= S.warn_pct ? "mid" : "" }), WHY(18)],
+  new_launches: [STATUS, TOKEN((m) => [m.name, m.age_h == null ? "" : num(m.age_h, 1) + "h"].filter(Boolean).join(" · "), 16), PRICE(11),
+    n("market_cap_usd", "MCap", 9, usd), n("volume_h24_usd", "Volume", 9, usd), CHART(14), FLOW(12), WHY(19)],
+  jup: [STATUS, TOKEN((m) => [m.name, m.age_d == null ? "" : num(m.age_d) + "d"].filter(Boolean).join(" · "), 16), PRICE(11),
+    n("mcap_usd", "MCap", 9, usd), n("volume_h24_usd", "Volume", 9, usd), CHART(14), FLOW(12), WHY(19)],
 };
 const cols = () => tier === "new_launches" ? COLS.new_launches : COLS.jup;
 const valueOf = (c, t) => c.get ? c.get(t) : t.metrics[c.key];
 
-// ---- sidebar / ticker / header ------------------------------------------------------
+// ---- market strip (cached server-side; the page never calls these APIs) -----------------
+let M = null, marketTimer = null;
+const SVGNS = "http://www.w3.org/2000/svg";
+function bigUsd(v) { if (v == null) return "–"; for (const [d, u] of [[1e12, "T"], [1e9, "B"], [1e6, "M"]]) if (Math.abs(v) >= d) return "$" + (v / d).toFixed(2) + u; return usd(v); }
+const chg = (v) => v == null ? null : el("span", "mchg " + tone(v, 2), (v >= 0 ? "▲" : "▼") + num(Math.abs(v), 2) + "%");
+const FNG_COLORS = ["#ea3943", "#ea8c00", "#f3d42f", "#93d900", "#16c784"];  // 0–20 … 80–100
+function gauge(value) {
+  const svg = document.createElementNS(SVGNS, "svg"); svg.setAttribute("width", "92"); svg.setAttribute("height", "52"); svg.setAttribute("viewBox", "0 0 92 52");
+  const cx = 46, cy = 46, r = 38, pt = (v) => { const a = Math.PI * (1 - v / 100); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
+  FNG_COLORS.forEach((c, i) => { const [x0, y0] = pt(i * 20 + 1.5), [x1, y1] = pt(i * 20 + 18.5), path = document.createElementNS(SVGNS, "path");
+    path.setAttribute("d", `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`);
+    path.setAttribute("fill", "none"); path.setAttribute("stroke", c); path.setAttribute("stroke-width", "7"); path.setAttribute("stroke-linecap", "round"); svg.append(path); });
+  if (value != null) { const [x, y] = pt(Math.max(0, Math.min(100, value))), dot = document.createElementNS(SVGNS, "circle");
+    dot.setAttribute("cx", x.toFixed(1)); dot.setAttribute("cy", y.toFixed(1)); dot.setAttribute("r", "5.5"); dot.setAttribute("fill", "#fff");
+    dot.setAttribute("stroke", "#0d0e11"); dot.setAttribute("stroke-width", "2"); svg.append(dot); }
+  return svg;
+}
+function mcard(title, tip, section) {
+  const c = el("div", "mcard"), stale = M && M.stale && M.stale[section];
+  c.title = tip + (M && M.updated && M.updated[section] ? `\n\nUpdated ${ago(M.updated[section])} ago` + (stale ? " — stale, the source did not answer since" : "") : "");
+  if (stale) c.classList.add("stale"); c.append(el("div", "mt", title)); return c;
+}
+function mrow(label, value, change) { const r = el("div", "mrow"), v = el("span", "mv", value); if (change) v.append(change); r.append(el("span", "ml", label), v); return r; }
+function renderMarket() {
+  const box = $("market"), f = M && M.fng, g = M && M.global, tot = M && M.total, sol = M && M.sol; box.replaceChildren();
+  const c1 = mcard("Fear & Greed", EXPLAIN.fng, "fng"), w = el("div", "fng"), info = el("div");
+  w.append(gauge(f ? f.value : null));
+  info.append(el("div", "big", f ? String(f.value) : "–"));
+  if (f) { const l = el("span", "lbl", f.label); l.style.background = FNG_COLORS[Math.min(4, Math.floor(f.value / 20))]; info.append(l);
+    if (f.prev != null) info.append(el("div", "yd", "Yesterday " + f.prev)); }
+  w.append(info); c1.append(w);
+  const c2 = mcard("Market cap", EXPLAIN.mktcap, "global"), mc = el("div", "big", g ? bigUsd(g.mcap) : "–");
+  if (g && chg(g.mcap_change_24h_pct)) mc.append(chg(g.mcap_change_24h_pct)); c2.append(mc, mrow("Volume 24h", g ? bigUsd(g.volume) : "–"));
+  const c3 = mcard("Open interest", EXPLAIN.oi, "total");
+  c3.append(mrow("Total", tot ? bigUsd(tot.oi) : "–", tot && chg(tot.oi_change_24h_pct)), mrow("Solana", sol ? bigUsd(sol.oi) : "–", sol && chg(sol.oi_change_24h_pct)));
+  const c4 = mcard("Derivatives volume · 24h", EXPLAIN.dvol, "total");
+  c4.append(mrow("Total", tot ? bigUsd(tot.volume) : "–"), mrow("Solana", sol ? bigUsd(sol.volume) : "–"));
+  box.append(c1, c2, c3, c4);
+}
+async function loadMarket() {
+  clearTimeout(marketTimer);
+  try { M = (await api("/api/market")).market; } catch (e) { /* keep last numbers */ }
+  renderMarket(); marketTimer = setTimeout(loadMarket, M ? 60000 : 8000);  // server refreshes every few minutes
+}
+
+// ---- sidebar / header --------------------------------------------------------------
 function switchTier(key) { tier = key; sortKey = null; sortDir = 1; page = 0; statusFilter = "all"; selected = null; results = null; $("search").value = ""; renderAll(); evaluate(); }
 function renderNav() {
   const nav = $("nav"); nav.replaceChildren();
   for (const [key, t] of Object.entries(S.tiers)) {
     const b = el("button", key === tier ? "on" : ""); b.title = t.label;
-    const ico = el("span", "ico", TIER[key].short); ico.style.background = TIER[key].color;
+    const ico = el("span", "ico"); ico.append(tierIcon(key, 16)); ico.style.background = TIER[key].color;
     b.append(ico, el("span", "lbl", t.label), el("span", "cnt", String(t.members)));
     b.onclick = () => { if (key !== tier) switchTier(key); }; nav.append(b);
   }
-}
-function allEvents() {
-  return Object.entries(S.tiers).flatMap(([k, t]) => t.events.map((e) => ({ ...e, tierKey: k, tierLabel: t.label }))).sort((a, b) => b.ts - a.ts);
-}
-function goToToken(tierKey, address) {
-  closeModal(); pendingSelect = address;
-  if (tierKey !== tier) switchTier(tierKey); else { statusFilter = "all"; $("search").value = ""; applyPending(); renderTf(); renderTable(); renderRight(); }
 }
 function applyPending() {
   if (!pendingSelect || !results) return;
@@ -377,45 +500,13 @@ function applyPending() {
   if (i >= 0) { selected = pendingSelect; page = Math.floor(i / pageSize); rightTab = "token"; }
   pendingSelect = null;
 }
-function renderTicker() {
-  const box = $("ticker"); box.replaceChildren(el("span", "tl", "TIER CHANGES · 7D"));
-  const all = allEvents();
-  if (!all.length) { box.append(el("span", "tk", "No changes yet — a tier's initial fill isn't counted")); return; }
-  const items = all.map((e, i) => {
-    const c = el("button", "tk"); const dot = el("span", "dot"); dot.style.background = TIER[e.tierKey].color;
-    c.append(el("span", "rank", "#" + (i + 1)), dot, el("span", null, e.symbol || "?"), el("span", "k " + e.kind, e.kind), el("span", "ago", e.tierLabel + " · " + ago(e.ts)));
-    c.title = (e.symbol || "?") + " " + e.kind + " " + e.tierLabel + (e.detail ? " — " + e.detail.split(";").map(label).join(", ") : "");
-    c.onclick = () => goToToken(e.tierKey, e.address); box.append(c); return c;
-  });
-  const more = el("button", "tk more", "View all " + all.length); more.onclick = showAllChanges; box.append(more);
-  while (box.scrollWidth > box.clientWidth && items.length) items.pop().remove();
-  if (items.length === all.length) more.textContent = "View list";
-  else more.textContent = "+" + (all.length - items.length) + " more";
-}
-function showAllChanges() {
-  const list = el("div");
-  for (const e of allEvents()) {
-    const r = el("div", "evrow"), dot = el("span", "dot"); dot.style.background = TIER[e.tierKey].color;
-    r.append(dot, el("b", null, e.symbol || "?"), el("span", "k " + e.kind, e.kind), el("span", "m", e.tierLabel), el("span", "m", ago(e.ts) + " ago"),
-      el("span", "m", e.detail ? e.detail.split(";").map(label).join(", ") : ""));
-    r.title = "Show this token"; r.onclick = () => goToToken(e.tierKey, e.address); list.append(r);
-  }
-  openModal("Tier changes · last 7 days", list);
-}
 function renderHead() {
-  const t = S.tiers[tier]; $("title").textContent = t.label; $("subtitle").textContent = TIER[tier].sub;
-  const box = $("stats"); box.replaceChildren();
-  const cnt = (k, v) => results ? tokensOf().filter((x) => res(x)[k] === v).length : null;
-  const ps = cnt("saved", "pass"), pn = cnt("status", "pass");
-  const items = [["Checked", num(t.tokens.length)], ["Listed", num(t.members)], ["Pass", ps == null ? "…" : num(ps)],
-                 ["With your filters", pn == null ? "…" : num(pn), pn == null ? 0 : pn - ps]];
-  for (const [l, v, d] of items) { const s = el("div", "stat"), vv = el("div", "v", v);
-    if (d) vv.append(el("span", "d " + (d > 0 ? "pos" : "neg"), (d > 0 ? "+" : "") + d)); s.append(el("div", "l", l), vv); box.append(s); }
+  const t = S.tiers[tier];
   $("meta").textContent = t.last_run ? "Updated " + ago(t.last_run) + " ago" : "Not updated yet";
 }
 function renderTf() {
   const tf = $("tf"); tf.replaceChildren();
-  for (const [k, l] of [["all", "All"], ["pass", "Pass"], ["fail", "Fail"], ["unknown", "Unknown"], ["changed", "Changed"], ["member", "Listed"]]) {
+  for (const [k, l] of [["all", "All"], ["pass", "Pass"], ["fail", "Fail"], ["unknown", "Unknown"], ["changed", "Changed"]]) {
     const b = el("button", statusFilter === k ? "on" : "", l); b.onclick = () => { statusFilter = k; page = 0; renderTf(); renderTable(); }; tf.append(b);
   }
 }
@@ -425,7 +516,7 @@ function filteredRows() {
   const q = $("search").value.trim().toLowerCase(), cs = cols();
   const rows = tokensOf().filter((t) => { const r = res(t), m = t.metrics;
     if (q && !((m.symbol || "") + " " + (m.name || "") + " " + m.address).toLowerCase().includes(q)) return false;
-    if (statusFilter === "changed") return r.status !== r.saved; if (statusFilter === "member") return t.member;
+    if (statusFilter === "changed") return r.status !== r.saved;
     return statusFilter === "all" || r.status === statusFilter; });
   const sc = cs.find((c) => c.key === sortKey) || cs[0], dir = sortKey ? sortDir : 1;
   return rows.sort((a, b) => { const va = valueOf(sc, a), vb = valueOf(sc, b);
@@ -435,7 +526,7 @@ function renderTable() {
   const cs = cols();
   $("cols").replaceChildren(...cs.map((c) => { const col = el("col"); col.style.width = c.w + "%"; return col; }));
   const tr = el("tr");
-  for (const c of cs) { const th = el("th", c.r ? "r" : "", c.label); if (sortKey === c.key) th.append(el("span", "ar", sortDir > 0 ? " ▲" : " ▼"));
+  for (const c of cs) { const th = el("th", c.r ? "r" : "", typeof c.label === "function" ? c.label() : c.label); if (sortKey === c.key) th.append(el("span", "ar", sortDir > 0 ? " ▲" : " ▼"));
     th.onclick = () => { sortDir = sortKey === c.key ? -sortDir : (["symbol", "status", "why"].includes(c.key) ? 1 : -1); sortKey = c.key; page = 0; renderTable(); }; tr.append(th); }
   $("thead").replaceChildren(tr);
   const body = $("tbody");
@@ -457,6 +548,7 @@ function renderTable() {
   body.replaceChildren(frag);
   if (!rows.length) body.append(emptyRow(cs.length, "No tokens match."));
   renderPager(rows.length, pages);
+  if (rows.slice(page * pageSize, (page + 1) * pageSize).some((t) => !(t.metrics.address in prices))) { clearTimeout(priceTimer); priceTimer = setTimeout(pollPrices, 300); }  // new rows: fetch now
 }
 function emptyRow(span, text) { const tr = el("tr"), td = el("td", "empty", text); td.colSpan = span; tr.append(td); return tr; }
 function renderPager(total, pages) {
@@ -485,11 +577,9 @@ function renderToken(body) {
   const t = tokensOf().find((x) => x.metrics.address === selected);
   if (!t) { body.append(el("div", "placeholder", "Select a token in the table")); return; }
   const m = t.metrics, r = res(t), nl = tier === "new_launches";
-  const head = el("div", "tok"), av = el("div", "av", (m.symbol || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
-  av.style.background = TIER[tier].color;
+  const head = el("div", "tok"), av = coin(m, "av");
   const info = el("div"); info.style.minWidth = "0";
-  const nm = el("div", "nm", m.symbol || "?"); const bd = el("span", "badge", TIER[tier].short); bd.style.background = TIER[tier].color; bd.style.color = "#0d0e11"; nm.append(bd);
-  if (t.member) { const s = el("span", "badge", "★ LISTED"); s.style.background = "rgba(242,201,76,.15)"; s.style.color = "var(--gold)"; s.title = "Currently listed in this tier"; nm.append(s); }
+  const nm = el("div", "nm", m.symbol || "?"); const bd = el("span", "badge"); bd.title = S.tiers[tier].label; bd.append(tierIcon(tier, 12)); bd.style.background = TIER[tier].color; bd.style.color = "#0d0e11"; nm.append(bd);
   info.append(nm, el("div", "ds", [m.name, nl ? num(m.age_h, 1) + "h old" : num(m.age_d) + " days old"].filter(Boolean).join(" · ")));
   head.append(av, info); body.append(head);
   if (isConcentrated(m)) body.append(el("div", "warnstrip", `⚠ Top wallets hold ${pct(concentration(m))} of supply. Large holders selling can move the price sharply` + (nl ? "." : " (may include team, treasury or exchange wallets).")));
@@ -510,6 +600,12 @@ function renderToken(body) {
                 box("Volume 24h", usd(m.volume_h24_usd), EXPLAIN.volume), box("Holders", compact(m.holders), EXPLAIN.holders),
                 box("Holders 24h", signed(m.holder_change_24h_pct, 1, "%"), EXPLAIN.growth, tone(m.holder_change_24h_pct, 1)));
   body.append(g);
+  const fb = el("div", "box flowbox"); fb.title = flowTip(m); fb.append(el("div", "l", "Bought / sold · 24h volume"));
+  if (flowShare(m) == null) fb.append(el("div", "v", "–"));
+  else { const p = flowShare(m), lg = el("div", "lgd"); fb.append(flowBar(m));
+    lg.append(el("span", "a", `${num(p)}% · ${usd(m.bought_usd_h24)}`), el("span", "b", `${usd(m.sold_usd_h24)} · ${num(100 - p)}%`));
+    fb.querySelector(".flow").append(lg); }
+  body.append(fb);
 
   const checks = mergedChecks(r.checks || []), real = checks.filter((c) => !c.info);
   const okN = real.filter((c) => c.ok === true).length;
@@ -609,7 +705,7 @@ function renderRun() {
   const st = $("runStatus"); st.className = "runstat " + (r.running ? "busy" : r.exit_code === 0 ? "ok" : r.exit_code ? "err" : "");
   st.textContent = r.running ? "● refreshing" : r.exit_code === 0 ? "● last refresh ok" : r.exit_code ? "● last refresh failed" : "idle"; st.title = r.tail || "";
 }
-function renderAll() { renderNav(); renderTicker(); renderHead(); renderTf(); renderTable(); renderRight(); renderRun(); }
+function renderAll() { renderNav(); renderHead(); renderTf(); renderTable(); renderRight(); renderRun(); }
 
 // ---- actions --------------------------------------------------------------------------
 async function evaluate() {
@@ -622,7 +718,7 @@ async function evaluate() {
 $("search").oninput = () => { page = 0; renderTable(); };
 $("runBtn").onclick = async () => { try { const j = await api("/api/run", { tiers: [tier] }); S.run = j.run; renderRun(); pollRun(); } catch (e) { $("runStatus").textContent = e.message; } };
 async function pollRun() { S.run = await api("/api/run"); renderRun(); if (S.run.running) setTimeout(pollRun, 3000); else load(); }
-new ResizeObserver(() => { if (S && results) { renderTable(); renderTicker(); } }).observe($("twrap"));
+new ResizeObserver(() => { if (S && results) renderTable(); }).observe($("twrap"));
 
 async function load() {
   S = await api("/api/state");
@@ -636,6 +732,7 @@ async function load() {
   results = null; renderAll(); evaluate(); if (S.run.running) pollRun();
 }
 load().catch((e) => { document.body.prepend(el("div", "fmsg err", "Failed to load: " + e.message)); });
+loadMarket();
 </script>
 </body>
 </html>

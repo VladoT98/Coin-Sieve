@@ -21,6 +21,7 @@ def pair_metrics(pair, launch_ts, now, bonding_dex_ids):
         "market_cap_usd": pair.get("marketCap"),
         "socials": [s.get("type") for s in info.get("socials") or []],
         "websites": len(info.get("websites") or []),
+        "icon": info.get("imageUrl"),  # cdn.dexscreener.com; untrusted, only served via logos.py
         "on_bonding_curve": pair.get("dexId") in bonding_dex_ids,
     }
 

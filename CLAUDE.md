@@ -39,6 +39,8 @@ A Solana token screener product, aiming for revenue:
 - `python sieve.py web [--port 8765] [--no-browser]` — private dashboard on 127.0.0.1: 3 tier tabs, every evaluated token + reasons, edit filters with instant what-if preview (`whatif.py`), save to config.yaml (`config_edit.py` keeps comments, only touches changed values), run a tier, tier changes of the last 7 days. Write endpoints need header `X-Coin-Sieve: 1`. Stdlib only.
 - `python sieve.py track-record` — what happened to tier entries at 24h / 72h / 7d (every `run` records due checkpoints).
 - Cadence (decided 2026-10-08, implement in Stage 9): `run --tiers new_launches` every 15 min; `run --tiers emerging,established` hourly; `digest daily` once a day; `digest weekly` once a week; `digest alerts` hourly after the Jupiter tiers run.
+- `python sieve.py charts [--max-calls N]` — refresh cached price sparklines (`charts.py`, tables `chart_series` / `chart_demand`); also runs at the end of every `run`, capped by `charts.max_calls_per_run`. Priority: rows viewed on the dashboard in the last `demand_window_minutes`, then members/passing tokens, then `tier_order`, oldest first. Failing tokens only when viewed (`include_failing: false`). The dashboard only reads the cache; % and line come from the same stored series.
+- Dashboard table columns (user decision 2026-10-09): Status · Token · Price · MCap · Volume · 48h/7d Price · Bought / sold · Why. The token panel keeps the full checklist. "Buy" is a banned word, so the volume-split column is "Bought / sold" (`bought_usd_h24` / `sold_usd_h24`), with neutral teal/copper colours, not green/red.
 - `python -m unittest discover tests` — unit tests (no network).
 
 ## Build order (stop after each stage for review; commit only after approval)
@@ -76,6 +78,21 @@ A Solana token screener product, aiming for revenue:
 - Holder counts: verified against the chain 2026-10-08 (getProgramAccounts, balance > 0): MINER on-chain 912 / Jupiter 915 / RugCheck 3,151; TON618 1,124 / 1,126 / 3,755; SI276 1,207 / 1,208 / 3,190. **Jupiter `holderCount` = real holders. RugCheck `totalHolders` = ALL token accounts incl. emptied ones — never use it as holders.** All tiers take holders from Jupiter; snapshots carry `source`.
 - `audit.devMints` exposes serial launchers (one New Launch's creator had minted 346 tokens) — candidate New Launches signal.
 - Never show the tag name "verified" in posts/site (banned word).
+- Price v3 (2026-10-08, dashboard live prices): `lite-api.jup.ag/price/v3?ids=a,b` → `{mint: {usdPrice, priceChange24h, liquidity, decimals, createdAt, blockId}}`; max 50 ids per call; covers New Launches too; `priceChange24h` can be missing. Cloudflare returns 403 to urllib's default User-Agent.
+- `stats24h.buyVolume` / `sellVolume` exist for New Launches too (26/30 probed 2026-10-09). A side with no trades is OMITTED (seen: `sellVolume` + `numSells` present, no `buyVolume`/`numBuys`) → treated as 0; both missing → "–". buy+sell ≈ DexScreener `volume.h24` for single-pool tokens; higher for multi-pool tokens (Jupiter sums all pools). DexScreener itself only splits trade COUNTS (`txns.h24.buys/sells`), not volume.
+
+## Verified API facts (market strip, 2026-10-09) — `market.py`, details in its docstring
+- Fear & Greed: alternative.me `fng/?limit=2` (no key, daily). Shown as a third-party mood gauge; CMC's own index needs a CMC key.
+- Totals: CoinGecko keyless `/global` (market cap, volume, 24h change) + `/derivatives/exchanges` (open interest / volume in BTC, 113 exchanges, 2 pages). Summed totals are ~half of CMC's ($219B vs $428B OI) — different exchange coverage. Keyless CoinGecko 429s after ~3 quick calls → 6 s spacing, 10-min server cache.
+- Solana open interest / volume: SOL perps on Binance (`openInterestHist`, `ticker/24hr`) + Bybit (`tickers`, `open-interest`, `kline`). Bybit `openInterest` counts both sides; use `singleOpenInterest(Value)` (Binance convention).
+- Liquidations: no free aggregate source (CoinGlass needs a key; OKX lists only its own; Binance only via websocket). Left out for now (user to check CoinGlass, 2026-10-09).
+- User decision 2026-10-09: labels say "Total" / "Solana", never the data provider's name. Tier-change ticker and the tier header (title + Checked/Pass counts) removed from the dashboard.
+
+## Verified API facts (GeckoTerminal, 2026-10-09)
+- `networks/solana/pools/{pool}/ohlcv/hour?aggregate=1&limit=168&currency=usd&token=base` → `data.attributes.ohlcv_list` `[[ts, o, h, l, c, vol_usd], ...]` newest first + `meta.base.coingecko_coin_id`. No rate-limit headers; `Cache-Control: max-age=30`.
+- Measured limit: 429 after 6 calls 2.5 s apart; still 429 after 20 s, OK after 60 s → ≈ 8 calls/min. Hours without trades have no candle; small New Launch pools can return 0 candles.
+- Token-level OHLCV (`networks/solana/tokens/{addr}/ohlcv/...`) → 401 (needs a paid key).
+- Alternative checked: CoinGecko keyless `coins/solana/contract/{addr}/market_chart?days=7` → 168 hourly aggregated prices, but 429 after 5 calls and only CoinGecko-listed tokens. Not used (a free demo key, 30/min, could be a later upgrade for Established).
 
 ## Telegram (Stage 3)
 - Error shape verified: `{"ok": false, "error_code": 401, "description": "Unauthorized"}`. Success verified 2026-10-08: `result.message_id` (bot @coinsieve_bot → private TEST channel "CS Test").
@@ -86,7 +103,7 @@ A Solana token screener product, aiming for revenue:
 - A token is postable only with ≥ `ranking.min_history_hours` of Jupiter holder snapshots, so it must pass on several runs.
 - Track record (Stage 7): `outcomes` table, Jupiter-only values. Vanished tokens (`found = 0`) stay in the stats — never drop them (survivorship bias). Late/missed checkpoints are skipped, not back-filled.
 - Daily/weekly posts are PNG cards (`card.py`) + short HTML captions (`digest.py`), sent via `sendPhoto` (caption ≤ 1024 visible UTF-16 units). Daily card: logo strip, screening funnel per tier (`funnel.py`, saved per run in `run_stats`), 3 tokens per tier with 48h price sparklines (GeckoTerminal OHLCV; pool address from DexScreener; 7 s spacing, 20 s backoff — its free limit is tight).
-- Logos: real logos (Jupiter `icon`) only for `publishing.logo_tiers` (Emerging, Established). New Launches always get letter badges — user decision 2026-10-08, their images are unvetted. Logo fetch is https-only, size-capped, raster-only, cached in `data/logos`.
+- Logos: Telegram cards show real logos (Jupiter `icon`) only for `publishing.logo_tiers` (Emerging, Established); New Launches get letter badges there (user decision 2026-10-08, unvetted images). The website shows logos for ALL tiers (user decision 2026-10-09): New Launches `icon` = DexScreener `info.imageUrl` (cdn.dexscreener.com, ~87% coverage), fallback Jupiter `icon` (often ipfs.io, which returns 429 under load). The site only serves `/api/logo/<address>`: URL looked up from stored metrics, never from the request; vetted + cached by `logos.py`; failures retried after 1h. Logo fetch is https-only, size-capped, raster-only, cached in `data/logos`.
 - Emoji policy: calm section markers only (📊 🆕 🌱 🏛 🗓 🎓). Never 🚀 / 💎 (hype; 💎 = "gem").
 - `digest daily|weekly --preview [--post]` ignores post history and records nothing — for design iterations.
 - Digests (Stage 6): `digest.py` builds texts; names/symbols go through `sanitize.clean_text` and are skipped if they hit `banned_words` or `blocked_words`. A tier's first hour of events (`bootstrap_hours`) and config exclusions (`excluded_*`) are never published.

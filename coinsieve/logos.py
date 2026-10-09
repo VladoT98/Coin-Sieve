@@ -1,4 +1,4 @@
-"""Round token avatars for the card: real logos (Emerging/Established, Jupiter `icon`) or letter badges.
+"""Round token avatars: real logos (Jupiter `icon`) or letter badges. Used by the card and the dashboard.
 
 Logo URLs are untrusted: https only, size-capped download, must decode as a raster image (SVG and
 anything else -> letter badge), pixel-count capped, cached as a normalised PNG.
@@ -6,6 +6,7 @@ anything else -> letter badge), pixel-count capped, cached as a normalised PNG.
 import hashlib
 import io
 import logging
+import re
 from pathlib import Path
 
 import requests
@@ -17,6 +18,9 @@ log = logging.getLogger(__name__)
 SIZE = 128
 MAX_BYTES = 2_000_000
 Image.MAX_IMAGE_PIXELS = 25_000_000  # refuse decompression bombs
+IPFS_GATEWAYS = ["https://gateway.pinata.cloud", "https://4everland.io"]  # tried in order, then the original URL
+IPFS_PATH = re.compile(r"^https://[^/]+(?P<rest>/ipfs/[A-Za-z0-9]{46,}(?:/[^?#]*)?)$")
+IPFS_SUBDOMAIN = re.compile(r"^https://(?P<cid>[a-z0-9]{46,})\.ipfs\.[^/]+(?P<path>/[^?#]*)?$")
 
 
 def _circle(img):
@@ -43,28 +47,58 @@ def letter_badge(symbol, color):
     return img
 
 
+def _cache_path(url, cache_dir):
+    return Path(cache_dir) / f"{hashlib.sha256(url.encode()).hexdigest()[:24]}.png"
+
+
+def _candidates(url):
+    """The URL itself, or for IPFS links the same CID on several gateways (ipfs.io / dweb.link / w3s.link
+    share one rate limit and answered 429 on 2026-10-09; pinata and 4everland served the same file)."""
+    if m := IPFS_PATH.match(url):
+        rest = m.group("rest")
+    elif m := IPFS_SUBDOMAIN.match(url):
+        rest = f"/ipfs/{m.group('cid')}{m.group('path') or ''}"
+    else:
+        return [url]
+    alts = [g + rest for g in IPFS_GATEWAYS]
+    return list(dict.fromkeys(alts + [url]))
+
+
+def _download(url, timeout):
+    with requests.get(url, timeout=timeout, stream=True) as r:
+        r.raise_for_status()
+        data = r.raw.read(MAX_BYTES + 1, decode_content=True)
+    if len(data) > MAX_BYTES:
+        raise ValueError("logo too large")
+    img = Image.open(io.BytesIO(data))
+    img.load()  # full decode (verifies it is a real raster image)
+    return _circle(img)
+
+
 def fetch_logo(url, cache_dir, timeout=10):
-    """Circular logo from a URL, or None. Cached by URL hash."""
+    """Circular logo from a URL, or None. Cached by URL hash (of the original URL)."""
     if not url or not url.startswith("https://"):
         return None
-    cache = Path(cache_dir) / f"{hashlib.sha256(url.encode()).hexdigest()[:24]}.png"
+    cache = _cache_path(url, cache_dir)
     if cache.exists():
         return Image.open(cache).convert("RGBA")
-    try:
-        with requests.get(url, timeout=timeout, stream=True) as r:
-            r.raise_for_status()
-            data = r.raw.read(MAX_BYTES + 1, decode_content=True)
-        if len(data) > MAX_BYTES:
-            raise ValueError("logo too large")
-        img = Image.open(io.BytesIO(data))
-        img.load()  # full decode (verifies it is a real raster image)
-        img = _circle(img)
-    except Exception as e:
-        log.info("logo %s unusable: %s", url[:80], e)
+    img = None
+    for u in _candidates(url):
+        try:
+            img = _download(u, timeout)
+            break
+        except Exception as e:
+            log.info("logo %s unusable: %s", u[:80], e)
+    if img is None:
         return None
     cache.parent.mkdir(parents=True, exist_ok=True)
     img.save(cache)
     return img
+
+
+def logo_png(url, cache_dir):
+    """Bytes of the vetted, cached PNG for a logo URL, or None (dashboard serves only these)."""
+    return _cache_path(url, cache_dir).read_bytes() if fetch_logo(url, cache_dir) is not None else None
 
 
 def avatar(m, tier, color, cache_dir, use_logo):

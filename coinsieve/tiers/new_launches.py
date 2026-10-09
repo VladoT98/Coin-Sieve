@@ -6,6 +6,7 @@ only decide what is postable in the daily digest, not membership.
 import logging
 
 from coinsieve.filters import evaluate, pair_metrics
+from coinsieve.jupiter import bought_sold_usd
 from coinsieve.ranking import rank_gate
 from coinsieve.rugcheck import evaluate_report
 from coinsieve.tiers import TierRun
@@ -110,17 +111,20 @@ def evaluate_tier(cfg, dex, rug, jup, store, evlog, now):
         metrics["passed_hard_filters"] = not reasons
         evaluated.append((row, metrics, reasons))
 
-    # Jupiter (one batch call): real holder count (matches on-chain; RugCheck's counts emptied
-    # accounts too) + creator launch count. Missing data = reject, like an incomplete RugCheck.
-    passers = [m["address"] for _, m, r in evaluated if not r]
+    # Jupiter (batch calls, 100 tokens each): real holder count (matches on-chain; RugCheck's counts
+    # emptied accounts too) + creator launch count. Missing data = reject, like an incomplete RugCheck.
+    # Asked for every token with pair data so the dashboard can show bought/sold volume for all of them;
+    # the checks below still only run on hard-filter passers.
+    with_pairs = [m["address"] for _, m, _ in evaluated if "pair_address" in m]
     try:
-        jup_data = {t["id"]: t for t in jup.search(passers)} if passers else {}
+        jup_data = {t["id"]: t for t in jup.search(with_pairs)} if with_pairs else {}
     except Exception as e:
         log.warning("jupiter search failed: %s", e)
         jup_data = None
 
     for row, metrics, reasons in evaluated:
         addr = metrics["address"]
+        metrics["bought_usd_h24"], metrics["sold_usd_h24"] = bought_sold_usd((jup_data or {}).get(addr))
         if not reasons:
             reasons += jupiter_checks(metrics, jup_data, cfg["filters"])
         if not reasons:
@@ -162,6 +166,7 @@ def jupiter_checks(m, jup_data, f):
     m["holders"] = t["holderCount"]
     m["dev_mints"] = audit.get("devMints")
     m["jup_organic_score"] = t.get("organicScore")
+    m["icon"] = m.get("icon") or t.get("icon")  # DexScreener CDN first; Jupiter's are often rate-limited IPFS links
     if m["dev_mints"] is None:
         return ["jupiter_incomplete: devMints missing"]
     if m["dev_mints"] > f["max_dev_mints"]:
