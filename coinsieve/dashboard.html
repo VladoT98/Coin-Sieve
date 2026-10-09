@@ -310,7 +310,15 @@ function fmtPrice(v) {  // tiny values get a zero count like DexScreener: 0.0000
 }
 const httpsUrl = (u) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) ? u : null;
 
+// Static site (GitHub Pages): `sieve.py export` sets window.CS_STATIC and writes api/*.json + logos/*.png next to the page.
+const STATIC = !!window.CS_STATIC;
+const STATIC_FILES = { "/api/state": "api/state.json", "/api/market": "api/market.json" };
 async function api(path, body) {
+  if (STATIC) {
+    if (body || !STATIC_FILES[path]) throw new Error("read-only site");
+    const r = await fetch(STATIC_FILES[path] + "?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" });
+    if (!r.ok) throw new Error(r.statusText); return r.json();
+  }
   const opts = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Coin-Sieve": "1" }, body: JSON.stringify(body) } : {};
   const r = await fetch(path, opts); const j = await r.json();
   if (!r.ok) throw new Error((j && j.error) || r.statusText); return j;
@@ -328,7 +336,7 @@ function hue(addr) { let h = 0; for (const c of addr) h = (h * 31 + c.charCodeAt
 function coin(t, cls) {
   const m = t.metrics, c = el("span", cls, (m.symbol || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
   c.style.background = `hsl(${hue(m.address)} 45% 62%)`;
-  if (t.logo && ADDR.test(m.address)) { const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = "/api/logo/" + m.address; img.onerror = () => img.remove(); c.append(img); }
+  if (t.logo && ADDR.test(m.address)) { const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = (STATIC ? "logos/" : "/api/logo/") + m.address + (STATIC ? ".png" : ""); img.onerror = () => img.remove(); c.append(img); }
   return c;
 }
 function two(main, sub, mainCls = "", subCls = "sub") { const d = el("div", "two"); d.append(el("span", mainCls, main), el("span", subCls, sub)); return d; }

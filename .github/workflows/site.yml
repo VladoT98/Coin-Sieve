@@ -1,0 +1,88 @@
+# Refreshes the data and publishes the public site to GitHub Pages (https://vladot98.github.io/Coin-Sieve/).
+# The database and logo cache live on the `state` branch (one commit, overwritten each run) so they survive
+# between runs. Jobs only fetch what is due (profiles/holders daily), so most runs take a few minutes.
+name: Refresh site
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # every 30 min; GitHub may start scheduled runs late
+  workflow_dispatch:
+
+permissions:
+  contents: write   # push the state branch
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh-site
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Restore database and logos from the state branch
+        run: |
+          mkdir -p data
+          if git ls-remote --exit-code --heads origin state >/dev/null; then
+            git clone --depth 1 --branch state "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/state
+            cp /tmp/state/coinsieve.db data/coinsieve.db
+            if [ -f /tmp/state/logos.tar.gz ]; then tar -xzf /tmp/state/logos.tar.gz -C data; fi
+          else
+            echo "No state branch yet: starting with an empty database."
+          fi
+
+      # Each step keeps going on failure: one unavailable source must not stop the site from updating.
+      - name: Coverage list
+        run: python sieve.py run
+        continue-on-error: true
+      - name: Profiles (daily per token)
+        run: python sieve.py profiles
+        continue-on-error: true
+      - name: Holders (daily per token)
+        run: python sieve.py holders
+        continue-on-error: true
+      - name: Coverage list with new profiles
+        run: python sieve.py run
+        continue-on-error: true
+      - name: Market strip
+        run: python sieve.py market
+        continue-on-error: true
+
+      - name: Save database and logos to the state branch
+        if: always()
+        run: |
+          [ -f data/coinsieve.db ] || exit 0
+          rm -rf /tmp/out && mkdir -p /tmp/out
+          cp data/coinsieve.db /tmp/out/
+          if [ -d data/logos ]; then tar -czf /tmp/out/logos.tar.gz -C data logos; fi
+          cd /tmp/out
+          git init -q -b state
+          git config user.name "coin-sieve-bot"
+          git config user.email "coin-sieve-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "State $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state
+
+      - name: Build static site
+        run: python sieve.py export --out site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

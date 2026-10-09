@@ -141,9 +141,8 @@ class App:
                 "solana_rpc": hold, "geckoterminal": store.max_ts("chart_series", "fetched_at"),
                 "market": store.max_ts("market_snapshots", "ts")}
 
-    def market(self):
-        """Cached market strip; starts a background refresh when the cache is older than refresh_minutes.
-        Page loads never wait on the external APIs."""
+    def market_view(self):
+        """(market strip from the cache, latest snapshot or None). No API calls."""
         cfg, now = self.load_cfg(), time.time()
         store = Store(str(self.db_path))
         try:
@@ -151,9 +150,16 @@ class App:
         finally:
             store.close()
         latest = history[-1] if history else None
+        return {"market": market.view(latest, history, cfg, now)}, latest
+
+    def market(self):
+        """Cached market strip; starts a background refresh when the cache is older than refresh_minutes.
+        Page loads never wait on the external APIs."""
+        cfg, now = self.load_cfg(), time.time()
+        view, latest = self.market_view()
         if (not latest or now - latest["ts"] >= cfg["market"]["refresh_minutes"] * 60) and not self.market_busy.locked():
             threading.Thread(target=self.refresh_market, args=(cfg, latest), daemon=True).start()
-        return {"market": market.view(latest, history, cfg, now)}
+        return view
 
     def refresh_market(self, cfg, latest):
         if not self.market_busy.acquire(blocking=False):
@@ -277,6 +283,39 @@ def make_handler(app):
                 self.send(500, {"error": str(e)})
 
     return Handler
+
+
+def export(config_path, out_dir):
+    """Static copy of the public site for GitHub Pages: index.html (static mode) + api/state.json,
+    api/market.json + logos/<address>.png from the logo cache. Same data the public server would send."""
+    import shutil
+    from coinsieve import logos
+    app, out = App(config_path, public=True), Path(out_dir)
+    (out / "api").mkdir(parents=True, exist_ok=True)
+    (out / "logos").mkdir(exist_ok=True)
+    state = app.state()
+    for t in state["tokens"]:
+        url, addr = app.icons.get(t["metrics"]["address"]), t["metrics"]["address"]
+        cached = logos._cache_path(url, app.logo_dir) if url else None
+        t["logo"] = bool(cached and cached.exists() and ADDR.match(addr))
+        if t["logo"]:
+            shutil.copyfile(cached, out / "logos" / f"{addr}.png")
+    (out / "api" / "state.json").write_text(json.dumps(state), encoding="utf-8")
+    (out / "api" / "market.json").write_text(json.dumps(app.market_view()[0]), encoding="utf-8")
+    html = HTML.read_text(encoding="utf-8").replace("<script>\n\"use strict\";",
+                                                    "<script>window.CS_STATIC = true;</script>\n<script>\n\"use strict\";", 1)
+    if "window.CS_STATIC" not in html:
+        raise RuntimeError("could not mark the page as static")
+    (out / "index.html").write_text(html, encoding="utf-8")
+    (out / ".nojekyll").write_text("", encoding="utf-8")  # serve files as-is (no Jekyll processing)
+    return len(state["tokens"])
+
+
+def refresh_market(config_path):
+    """Fetch the market strip once and store it (scheduled job; the local server does this in a thread)."""
+    app = App(config_path, public=True)
+    _, latest = app.market_view()
+    app.refresh_market(app.load_cfg(), latest)
 
 
 def serve(config_path, port, open_browser=True, public=False):

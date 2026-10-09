@@ -3,6 +3,8 @@
 Usage:
     python sieve.py [run] [--tiers coverage,new_launches,emerging,established]   # evaluate (default: coverage)
     python sieve.py profiles [--max N]                                  # links, native check, supply, logos (daily)
+    python sieve.py market                                              # refresh the market strip once
+    python sieve.py export [--out site]                                 # static public site (GitHub Pages)
     python sieve.py holders [--force]                                   # top holders (RugCheck + Solana RPC, daily)
     python sieve.py digest daily|weekly|alerts [--post]                  # dry run unless --post (TEST chat)
     python sieve.py telegram-check                                      # one test line to the TEST chat
@@ -411,6 +413,9 @@ def main():
     sub.add_parser("track-record", help="print track-record stats per tier and checkpoint")
     p_ch = sub.add_parser("charts", help="refresh cached price sparklines now (also runs after every `run`)")
     p_ch.add_argument("--max-calls", type=int, default=None, help="GeckoTerminal calls (default: charts.max_calls_per_run)")
+    sub.add_parser("market", help="refresh the market strip once (scheduled job)")
+    p_exp = sub.add_parser("export", help="write the static public site (GitHub Pages)")
+    p_exp.add_argument("--out", default="site")
     p_web = sub.add_parser("web", help="private dashboard on http://127.0.0.1:<port>")
     p_web.add_argument("--port", type=int, default=8765)
     p_web.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
@@ -437,6 +442,13 @@ def main():
         return cmd_holders(cfg, args.force)
     if command == "charts":
         return cmd_charts(cfg, args.max_calls)
+    if command == "market":
+        from coinsieve.dashboard import refresh_market
+        return refresh_market(args.config)
+    if command == "export":
+        from coinsieve.dashboard import export
+        n = export(args.config, args.out)
+        return print(f"Static site written to {args.out}/ ({n} tokens)")
     if command == "web":
         from coinsieve.dashboard import serve
         return serve(args.config, args.port, open_browser=not args.no_browser, public=args.public)

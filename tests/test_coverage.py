@@ -209,5 +209,30 @@ class DashboardReadsOnlyTest(unittest.TestCase):
             self.assertNotIn(needle, src)
 
 
+class StaticExportTest(unittest.TestCase):
+    def test_export_writes_static_public_site(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from coinsieve import dashboard
+        state = {"mode": "public", "tokens": [{"metrics": {"address": "A" * 43}, "logo": True}]}
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(dashboard.App, "__init__", lambda self, *a, **k: None), \
+                mock.patch.object(dashboard.App, "state", lambda self: state), \
+                mock.patch.object(dashboard.App, "market_view", lambda self: ({"market": None}, None)):
+            dashboard.App.icons, dashboard.App.logo_dir = {}, Path(d)
+            try:
+                self.assertEqual(dashboard.export("config.yaml", d), 1)
+            finally:
+                del dashboard.App.icons, dashboard.App.logo_dir
+            html = Path(d, "index.html").read_text(encoding="utf-8")
+            self.assertIn("window.CS_STATIC = true", html)
+            saved = json.loads(Path(d, "api", "state.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["mode"], "public")
+            self.assertFalse(saved["tokens"][0]["logo"])   # no cached file -> no broken image link
+            self.assertTrue(Path(d, ".nojekyll").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
