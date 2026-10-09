@@ -1,7 +1,9 @@
-"""Coin Sieve: Solana token screener. Evaluates tiers, tracks membership, posts Telegram digests.
+"""Coin Sieve: profiles of established tokens. Evaluates the coverage list, fetches profiles, posts digests.
 
 Usage:
-    python sieve.py [run] [--tiers new_launches,emerging,established]   # evaluate (default: all tiers)
+    python sieve.py [run] [--tiers coverage,new_launches,emerging,established]   # evaluate (default: coverage)
+    python sieve.py profiles [--max N]                                  # links, native check, supply, logos (daily)
+    python sieve.py holders [--force]                                   # top holders (RugCheck + Solana RPC, daily)
     python sieve.py digest daily|weekly|alerts [--post]                  # dry run unless --post (TEST chat)
     python sieve.py telegram-check                                      # one test line to the TEST chat
     python sieve.py track-record                                        # what happened after tier entries
@@ -18,7 +20,8 @@ from pathlib import Path
 import yaml
 from dotenv import dotenv_values
 
-from coinsieve import card, charts, funnel, logos, membership, track_record
+from coinsieve import card, charts, coverage, funnel, holders, logos, membership, profiles, track_record
+from coinsieve.coingecko import CoinGecko
 from coinsieve.dexscreener import DexScreener
 from coinsieve.digest import (TIER_LABEL, alerts_text, blocked_reason, card_stats, daily_caption, display_name,
                               record_line, weekly_caption, zero_text)
@@ -29,13 +32,19 @@ from coinsieve.jupiter import Jupiter
 from coinsieve.ranking import sort_key
 from coinsieve.report import print_events, print_jupiter_tier_run, print_tier_run
 from coinsieve.rugcheck import RugCheck
+from coinsieve.solana_rpc import SolanaRPC
 from coinsieve.store import Store
 from coinsieve.telegram import Telegram, TelegramError
 from coinsieve.tiers import jupiter_tiers, new_launches
 
 log = logging.getLogger("sieve")
 
-ALL_TIERS = ("new_launches", "emerging", "established")
+ALL_TIERS = ("coverage", "new_launches", "emerging", "established")
+DEFAULT_TIERS = ("coverage",)   # the website shows the coverage list only; other tiers run when asked
+
+
+def tier_cfg(cfg, tier):
+    return cfg["coverage"] if tier == "coverage" else cfg["tiers"][tier]
 
 
 def setup_logging(log_dir):
@@ -58,6 +67,8 @@ def cmd_run(cfg, tiers):
     jup = Jupiter(cfg["jupiter"]["base_url"], api["timeout_s"], api["jupiter_min_interval_s"], api["retries"])
 
     runs = []
+    if "coverage" in tiers:
+        runs.append(coverage.evaluate(cfg, jup, store, evlog, now))
     if "new_launches" in tiers:
         dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
         rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
@@ -68,10 +79,12 @@ def cmd_run(cfg, tiers):
 
     events = []
     for run in runs:
-        events += membership.update(store, run, now, cfg["tiers"][run.tier], cfg.get("graduation"))
+        events += membership.update(store, run, now, tier_cfg(cfg, run.tier), cfg.get("graduation"))
         if not run.outage:
             store.save_latest(run.tier, run.results, now)
             store.save_run_stats(run.tier, funnel.stats(run), now)
+        if run.tier == "coverage" and not run.outage:
+            coverage.record_holder_snapshots(store, run, now, cfg["coverage"]["holder_snapshot_hours"])
     store.commit()
     recorded = track_record.update(store, jup, now, cfg["track_record"])
 
@@ -103,6 +116,48 @@ def cmd_charts(cfg, max_calls=None):
         print(f"Price charts: refresh failed ({e}); cached charts kept")
     finally:
         store.close()
+
+
+def coverage_candidates(store, cfg):
+    """{address: metrics} worth profiling: covered tokens + tokens meeting the market criteria in the last run."""
+    ts = store.latest_run_ts("coverage")
+    if not ts:
+        return {}
+    members = set(store.current_members("coverage"))
+    return {t["metrics"]["address"]: t["metrics"] for t in store.latest_since("coverage", ts)
+            if t["metrics"]["address"] in members or coverage.market_ok(t["metrics"], cfg)}
+
+
+def cmd_profiles(cfg, max_per_run=None):
+    api = cfg["api"]
+    if max_per_run is not None:
+        cfg["profiles"]["max_per_run"] = max_per_run
+    store = Store(cfg["storage"]["db_path"])
+    cands = coverage_candidates(store, cfg)
+    if not cands:
+        print("No coverage run stored yet - run `python sieve.py run` first.")
+        return store.close()
+    cg = CoinGecko(api["coingecko_base"], api["timeout_s"], api["coingecko_min_interval_s"], api["retries"],
+                   backoff_s=api["coingecko_backoff_s"])
+    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
+    logo_dir = cfg["storage"]["logo_dir"]
+    print(f"Profiles: {len(cands)} candidates; CoinGecko lookups are ~{api['coingecko_min_interval_s']} s apart...")
+    st = profiles.update(store, cfg, list(cands), cands, cg, dex, time.time(),
+                         cache_logo=lambda url: logos.fetch_logo(url, logo_dir) is not None)
+    print(f"Profiles: {st['done']} updated of {st['due']} due, CoinGecko failed for {st['coingecko_failed']}"
+          f" (old CoinGecko data kept), logos cached {st['logos']}. Run `python sieve.py run` to apply them.")
+    store.close()
+
+
+def cmd_holders(cfg, force=False):
+    api = cfg["api"]
+    store = Store(cfg["storage"]["db_path"])
+    cands = coverage_candidates(store, cfg)
+    rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
+    rpc = SolanaRPC(api["solana_rpc_url"], api["timeout_s"], api["solana_rpc_min_interval_s"], api["retries"])
+    st = holders.update(store, cfg, list(cands), rug, rpc, time.time(), force)
+    print(f"Holders: {st['done']} updated of {st['due']} due, {st['failed']} failed (old reports kept).")
+    store.close()
 
 
 def bootstrap_end(store, tier, pub):
@@ -341,8 +396,12 @@ def main():
     parser.add_argument("--config", default="config.yaml")
     sub = parser.add_subparsers(dest="command")
     p_run = sub.add_parser("run", help="evaluate tiers (default command)")
-    p_run.add_argument("--tiers", default=",".join(ALL_TIERS),
-                       help=f"comma-separated subset of {','.join(ALL_TIERS)} (default: all)")
+    p_run.add_argument("--tiers", default=",".join(DEFAULT_TIERS),
+                       help=f"comma-separated subset of {','.join(ALL_TIERS)} (default: coverage)")
+    p_prof = sub.add_parser("profiles", help="links, native check, supply and logos for the coverage list (daily)")
+    p_prof.add_argument("--max", type=int, default=None, help="max tokens this run (default: profiles.max_per_run)")
+    p_hold = sub.add_parser("holders", help="top-holder analysis for the coverage list (daily)")
+    p_hold.add_argument("--force", action="store_true", help="refresh every token, not only those due")
     p_dig = sub.add_parser("digest", help="build a Telegram digest")
     p_dig.add_argument("kind", choices=["daily", "weekly", "alerts"])
     p_dig.add_argument("--post", action="store_true", help="send to the TEST chat (default: dry run)")
@@ -365,13 +424,17 @@ def main():
     setup_logging(cfg["storage"]["log_dir"])
 
     if command == "run":
-        tiers = [t.strip() for t in getattr(args, "tiers", ",".join(ALL_TIERS)).split(",") if t.strip()]
+        tiers = [t.strip() for t in getattr(args, "tiers", ",".join(DEFAULT_TIERS)).split(",") if t.strip()]
         unknown = set(tiers) - set(ALL_TIERS)
         if unknown:
             sys.exit(f"Unknown tier(s): {', '.join(sorted(unknown))}")
         return cmd_run(cfg, tiers)
     if command == "track-record":
         return cmd_track_record(cfg)
+    if command == "profiles":
+        return cmd_profiles(cfg, args.max)
+    if command == "holders":
+        return cmd_holders(cfg, args.force)
     if command == "charts":
         return cmd_charts(cfg, args.max_calls)
     if command == "web":

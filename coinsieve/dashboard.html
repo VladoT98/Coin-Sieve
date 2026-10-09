@@ -8,9 +8,7 @@
   :root {
     --bg: #111215; --side: #0d0e11; --panel: #16171b; --panel2: #1c1d22; --hover: #1f2026; --line: #24252b;
     --text: #ececf1; --muted: #8b8c96; --dim: #5c5d66;
-    --green: #2fbd71; --red: #f0475b; --amber: #f2b33d; --blue: #5ea0ff; --violet: #a685ff; --gold: #f2c94c;
-    --nl: #5ea0ff; --em: #a685ff; --es: #f2b33d;
-    --in: #3fb6b2; --out: #d08a5c;  /* bought / sold bar: neutral pair, deliberately not green/red */
+    --green: #2fbd71; --red: #f0475b; --amber: #f2b33d; --blue: #5ea0ff; --violet: #a685ff;
     --sidew: 220px; --rightw: 370px; --row: 44px;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
   }
@@ -18,6 +16,7 @@
   html, body { height: 100%; }
   body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font: 13px/1.35 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
   button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   .app { height: 100vh; display: grid; grid-template-columns: var(--sidew) minmax(0, 1fr) var(--rightw); grid-template-rows: auto minmax(0, 1fr); }
   body.public .admin-only { display: none !important; }
 
@@ -25,23 +24,21 @@
   .side { grid-row: 1 / 3; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 10px; min-height: 0; }
   .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px; font-weight: 800; font-size: 17px; letter-spacing: .04em; white-space: nowrap; }
   .brand .mark { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; font-size: 12px; font-weight: 900; letter-spacing: 0; }
-  .navlabel { color: var(--dim); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 6px 8px; }
   .nav { display: flex; flex-direction: column; gap: 2px; }
-  .nav button { display: flex; align-items: center; gap: 11px; border: 0; background: none; border-radius: 8px; padding: 9px 8px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; text-align: left; }
-  .nav button:hover { background: var(--hover); color: var(--text); }
-  .nav button.on { background: var(--panel2); color: var(--text); }
-  .nav .ico { flex: none; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; font: 800 10px var(--mono); color: #0d0e11; }
+  .nav a { display: flex; align-items: center; gap: 11px; border-radius: 8px; padding: 9px 8px; color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none; }
+  .nav a:hover { background: var(--hover); color: var(--text); }
+  .nav a.on { background: var(--panel2); color: var(--text); }
+  .nav .ico { flex: none; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: #26272e; color: var(--text); }
   .nav .lbl { flex: 1; white-space: nowrap; }
   .nav .cnt { font: 700 11px var(--mono); color: var(--muted); background: #22232a; padding: 1px 7px; border-radius: 999px; }
   .side .grow { flex: 1; }
   .sidelink { border: 0; background: none; color: var(--muted); text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
   .sidelink:hover { background: var(--hover); color: var(--text); } .sidelink .i { width: 26px; text-align: center; }
   .modebadge { margin: 6px 8px 10px; font: 800 10px var(--mono); color: var(--amber); letter-spacing: .08em; white-space: nowrap; }
-  .runbtn { border: 0; border-radius: 8px; padding: 10px; cursor: pointer; background: #fff; color: #000; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+  .runbtn { border: 0; border-radius: 8px; padding: 10px; cursor: pointer; background: #fff; color: #000; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; width: 100%; }
   .runbtn:disabled { opacity: .6; cursor: default; }
   .runstat { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .runstat.ok { color: var(--green); } .runstat.err { color: var(--red); } .runstat.busy { color: var(--amber); }
-
 
   /* market strip */
   .market { grid-column: 2 / 4; display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--side); min-width: 0; }
@@ -58,43 +55,44 @@
 
   /* center */
   .center { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
-  .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .app.wide .center { grid-column: 2 / 4; border-right: 0; } .app.wide .right { display: none; }
+  .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .tf { display: flex; gap: 2px; }
   .tf button { border: 0; background: none; color: var(--muted); font-weight: 600; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
   .tf button:hover { color: var(--text); } .tf button.on { color: var(--blue); background: rgba(94, 160, 255, .1); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--panel2); border-radius: 999px; padding: 4px 11px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .chip:hover:not(:disabled) { color: var(--text); } .chip.on { background: rgba(94, 160, 255, .14); color: var(--blue); border-color: rgba(94, 160, 255, .45); }
+  .chip:disabled { opacity: .45; cursor: not-allowed; }
   .sep { width: 1px; height: 20px; background: var(--line); }
-  .search { display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; width: 260px; }
+  .search { display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; width: 240px; }
   .search input { border: 0; background: none; outline: none; width: 100%; }
-  .bar .meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .bar .meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; } .bar .meta.stale { color: var(--amber); }
   .twrap { flex: 1; min-height: 0; overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  th { height: 36px; padding: 0 10px; background: var(--panel); color: var(--text); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; text-align: left;
-       border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; user-select: none; }
-  th:hover { color: var(--blue); } th .ar { color: var(--blue); }
-  th.r, td.r { text-align: right; }
-  td { height: var(--row); padding: 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  tbody tr { cursor: pointer; } tbody tr:hover td { background: var(--hover); }
-  tbody tr.sel td { background: #20222a; } tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+  table.list { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .list th { height: 36px; padding: 0 10px; background: var(--panel); color: var(--text); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; text-align: left;
+       border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; cursor: pointer; user-select: none; }
+  .list th .thw { display: flex; align-items: center; gap: 4px; min-width: 0; } .list th.r .thw { justify-content: flex-end; }
+  .list th .ar { color: var(--blue); flex: none; }
+  .hl { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: help; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline dotted; text-decoration-color: #6d6e78; text-underline-offset: 4px; }
+  .hl:hover, .hl[aria-expanded="true"] { color: var(--blue); }
+  .list th.r, .list td.r { text-align: right; }
+  .list td { height: var(--row); padding: 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list tbody tr { cursor: pointer; } .list tbody tr:hover td { background: var(--hover); }
+  .list tbody tr.sel td { background: #20222a; } .list tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
   td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
   .two { display: flex; flex-direction: column; line-height: 1.25; } .two > * { overflow: hidden; text-overflow: ellipsis; }
   .r .two { align-items: flex-end; }
   .sub { color: var(--muted); font-size: 11.5px; font-weight: 500; }
-  .sym { font-weight: 800; } .warn { color: var(--amber); margin-left: 5px; }
-  .st { font-weight: 700; } .st.pass { color: var(--green); } .st.fail { color: var(--red); } .st.unknown { color: var(--amber); }
-  .chg { font: 700 11px var(--mono); margin-left: 5px; } .chg.up { color: var(--green); } .chg.down { color: var(--red); }
-  .why { color: var(--muted); } .why.ok { color: #7fd3a5; } .why .cnt { font: 700 11.5px var(--mono); margin-right: 5px; }
-  .px .pv { font: 700 13.5px var(--mono); color: var(--text); } .px .sub { font-family: var(--mono); } .px.flash-up { animation: fu 1.2s; } .px.flash-down { animation: fd 1.2s; }
-  @keyframes fu { from { background: rgba(46,204,113,.3); } } @keyframes fd { from { background: rgba(235,87,87,.3); } }
+  .sym { font-weight: 800; } .chain { font: 700 9.5px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
+  .miss { color: #f08a96; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .px .pv { font: 700 13.5px var(--mono); color: var(--text); }
   .sparkcell { display: flex; align-items: center; justify-content: flex-end; gap: 7px; } .sparkcell.stale { opacity: .5; }
   .sparkwrap svg { display: block; width: 64px; height: 26px; }
   .spark.up { color: var(--green); } .spark.down { color: var(--red); } .spark.flat { color: var(--muted); }
-  .flow { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .flow .vbar { display: flex; width: 100%; max-width: 92px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
-  .flow .in { background: var(--in); } .flow .out { background: var(--out); }
-  .flowbox { margin-top: 6px; } .flowbox .flow { align-items: stretch; } .flowbox .vbar { max-width: none; height: 8px; }
-  .flowbox .lgd { display: flex; justify-content: space-between; font: 600 12px var(--mono); }
-  .flowbox .lgd .a { color: var(--in); } .flowbox .lgd .b { color: var(--out); }
-  .pos { color: var(--green); } .neg { color: var(--red); } .mid { color: var(--amber); }
+  .doc { font-weight: 600; } .doc .y { color: var(--green); margin-right: 5px; } .doc .n { color: var(--dim); margin-right: 5px; }
   .empty { color: var(--muted); text-align: center; cursor: default; }
   .pager { display: flex; align-items: center; gap: 4px; padding: 7px 12px; border-top: 1px solid var(--line); }
   .pager .info { color: var(--muted); font-size: 12px; margin-right: auto; }
@@ -102,13 +100,35 @@
   .pager button:hover:not(:disabled) { color: var(--text); background: var(--hover); }
   .pager button.on { background: var(--text); color: #000; border-color: var(--text); }
   .pager button:disabled { opacity: .35; cursor: default; } .pager .gap { color: var(--dim); padding: 0 2px; }
+  .disc { padding: 7px 12px; border-top: 1px solid var(--line); color: var(--dim); font-size: 11.5px; text-align: center; }
+
+  /* header tooltip popover */
+  .tip { position: fixed; z-index: 30; width: 300px; max-width: calc(100vw - 16px); background: var(--panel2); border: 1px solid #383943; border-radius: 10px; padding: 11px 13px;
+         box-shadow: 0 10px 28px rgba(0, 0, 0, .55); font-size: 12.5px; line-height: 1.45; }
+  .tip[hidden] { display: none; }
+  .tip h4 { margin: 0 0 5px; font-size: 13px; } .tip p { margin: 0 0 9px; color: #c9cad3; }
+  .tip .ta { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .tip a { color: var(--blue); text-decoration: none; font-weight: 700; } .tip a:hover { text-decoration: underline; }
+  .tip button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 3px 9px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 12px; }
+  .tip button:hover { color: var(--text); }
+
+  /* methodology */
+  .article { flex: 1; min-height: 0; overflow: auto; padding: 22px 32px 30px; }
+  .article .inner { max-width: 820px; }
+  .article h1 { margin: 0 0 6px; font-size: 24px; } .article .lead { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+  .article h2 { margin: 26px 0 8px; font-size: 16px; scroll-margin-top: 14px; } .article p { color: #c9cad3; line-height: 1.6; margin: 0 0 10px; font-size: 13.5px; }
+  .article h2:focus { outline: none; } .article h2.flash { animation: hl 1.6s; } @keyframes hl { from { color: var(--blue); } }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; } .toc a { color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; } .toc a:hover { color: var(--text); }
+  table.kv { border-collapse: collapse; margin: 6px 0 12px; width: 100%; } .kv th, .kv td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 12.5px; }
+  .kv th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; } .kv td.m { font-family: var(--mono); }
+  .kv td:first-child { width: 34%; }
 
   /* right panel */
   .right { grid-column: 3; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
   .rtabs { display: flex; border-bottom: 1px solid var(--line); }
   .rtabs button { flex: 1; border: 0; background: none; padding: 11px; cursor: pointer; color: var(--muted); font-weight: 700; border-bottom: 2px solid transparent; }
   .rtabs button.on { color: var(--text); border-bottom-color: var(--text); }
-  .rbody { flex: 1; min-height: 0; overflow: hidden; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .rbody { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
   .tok { display: flex; align-items: center; gap: 10px; }
   .av { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #0d0e11; font-size: 16px; }
   .av, .coin { position: relative; overflow: hidden; }
@@ -117,8 +137,11 @@
   .tokcell { display: flex; align-items: center; gap: 8px; min-width: 0; } .tokcell .two { min-width: 0; }
   .tok .nm { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tok .ds { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .badge { display: inline-grid; place-items: center; padding: 3px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
-  .warnstrip { background: rgba(242, 179, 61, .1); border: 1px solid rgba(242, 179, 61, .35); color: #f6d38b; border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+  .pricebig { display: flex; align-items: baseline; gap: 8px; } .pricebig .v { font: 800 20px var(--mono); } .pricebig .c { font: 700 12.5px var(--mono); } .pricebig .t { color: var(--dim); font-size: 11.5px; margin-left: auto; }
+  .linkchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lc { display: inline-flex; align-items: center; gap: 5px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 12px; white-space: nowrap; cursor: help; }
+  a.lc { cursor: pointer; } a.lc:hover { background: var(--hover); }
+  .lc .y { color: var(--green); } .lc.no { color: var(--dim); } .lc.no .n { color: var(--dim); }
   .lrow { display: flex; gap: 6px; }
   .lb { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 6px;
         color: var(--text); text-decoration: none; font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
@@ -131,23 +154,19 @@
   .checks.pass { border-color: rgba(47, 189, 113, .4); } .checks.fail { border-color: rgba(240, 71, 91, .35); } .checks.unknown { border-color: rgba(242, 179, 61, .35); }
   .checks .ct { font-weight: 800; margin-bottom: 4px; display: flex; justify-content: space-between; }
   .checks .ct span { color: var(--muted); font-weight: 600; font-size: 12px; }
-  .ck { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; font-size: 12px; line-height: 19px; cursor: help; }
+  .ck { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; font-size: 12px; line-height: 19px; }
   .ck .ic { font-weight: 800; text-align: center; } .ck .ic.ok { color: var(--green); } .ck .ic.bad { color: var(--red); } .ck .ic.unk { color: var(--amber); } .ck .ic.inf { color: var(--dim); }
   .ck .lb2 { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ck .val { font-family: var(--mono); font-weight: 600; white-space: nowrap; } .ck .val small { color: var(--dim); font-weight: 500; margin-left: 5px; }
-  .ck.bad .lb2 { color: var(--text); }
+  .ck.bad .lb2 { color: var(--text); } .ck.inf .lb2 { color: var(--dim); }
   .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: var(--dim); }
   .linkbtn { border: 0; background: none; color: var(--blue); cursor: pointer; padding: 0; font-weight: 600; font-size: 12px; white-space: nowrap; }
   .placeholder { color: var(--muted); text-align: center; margin-top: 40px; }
 
   /* filters tab */
-  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .presets button { border: 1px solid var(--line); background: var(--panel2); border-radius: 7px; padding: 7px 4px; cursor: pointer; font-weight: 700; }
-  .presets button:hover { background: var(--hover); } .presets button.on { background: #fff; color: #000; border-color: #fff; }
-  .pdesc { color: var(--muted); font-size: 11.5px; margin-top: -3px; }
-  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 9px; align-content: start; overflow: auto; min-height: 0; }
-  .group { grid-column: span 2; color: var(--dim); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-top: 3px; }
-  .group.toggle { cursor: pointer; } .group.toggle:hover { color: var(--muted); }
+  .pdesc { color: var(--muted); font-size: 11.5px; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 9px; align-content: start; }
+  .group { grid-column: span 2; color: var(--dim); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
   .field { min-width: 0; }
   .field label { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; }
   .field label > span:first-child { overflow: hidden; text-overflow: ellipsis; }
@@ -156,10 +175,10 @@
   .field input:focus { outline: none; border-color: var(--blue); }
   .field.changed input[type=number], .field.changed input[type=text] { border-color: var(--amber); }
   .field .hint { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-  .field .hint .rm { color: var(--red); font-weight: 700; } .field .hint .rm0 { color: var(--dim); }
-  .field.bool { grid-column: span 2; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; }
+  .field.bool { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; }
+  .field.bool.wide { grid-column: span 2; }
   .field.bool.changed { border-color: var(--amber); } .field.bool label { margin: 0; color: var(--text); font-size: 12px; flex: 1; }
-  .field.bool .hint { margin: 0; } .field.bool input { accent-color: var(--blue); }
+  .field.bool input { accent-color: var(--blue); }
   .factions { display: flex; gap: 6px; }
   .factions button { flex: 1; border-radius: 7px; padding: 9px; font-weight: 700; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); }
   .factions button.save { background: #fff; color: #000; border-color: #fff; }
@@ -176,274 +195,224 @@
   .gl h3 { margin: 14px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .gl dl { margin: 0; display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; } .gl dt { font-weight: 700; } .gl dd { margin: 0; color: #c9cad3; }
 
-  @media (max-height: 800px) {  /* short laptop screens: tighter right panel so everything fits */
-    .rbody { gap: 6px; padding: 9px 14px; } .fields { gap: 3px 9px; }
-    .field input[type=number], .field input[type=text] { padding: 2px 8px; } .field.bool { padding: 3px 9px; }
-    .presets button { padding: 5px 4px; } .factions button { padding: 7px; } .group { margin-top: 1px; }
-  }
   @media (max-width: 1500px) {
     :root { --sidew: 64px; --rightw: 340px; }
-    .brand span, .nav .lbl, .navlabel, .runstat, .runbtn .t, .sidelink .t, .modebadge { display: none; }
+    .brand span, .nav .lbl, .runstat, .runbtn .t, .sidelink .t, .modebadge { display: none; }
     .brand { justify-content: center; padding: 2px 0 14px; } .sidelink { justify-content: center; }
-    .nav button { justify-content: center; position: relative; padding: 9px 0; }
+    .nav a { justify-content: center; position: relative; padding: 9px 0; }
     .nav .cnt { position: absolute; top: 0; right: 0; font-size: 9.5px; padding: 0 5px; }
-    th, td { padding: 0 7px; } .search { width: 190px; }
+    .list th, .list td { padding: 0 7px; } .search { width: 180px; }
   }
   @media (max-width: 1100px) {
     body { overflow: auto; } .app { height: auto; grid-template-columns: 1fr; grid-template-rows: auto; }
-    .side, .market, .center, .right { grid-column: 1; grid-row: auto; } .market { grid-template-columns: 1fr 1fr; } .center { min-height: 640px; } .twrap { overflow-x: auto; } table { min-width: 900px; }
+    .side, .market, .center, .right, .app.wide .center { grid-column: 1; grid-row: auto; }
+    .side { flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; } .side .grow { display: none; } .nav { flex-direction: row; } .brand { padding: 0 6px 0 0; }
+    .market { grid-template-columns: 1fr 1fr; } .center { min-height: 640px; } .twrap { overflow-x: auto; } table.list { min-width: 900px; }
+    .article { padding: 16px; }
+  }
+  @media (max-width: 700px) {
+    .market { grid-template-columns: 1fr; } .search { width: 100%; } .bar .meta { margin-left: 0; } .bar .sep { display: none; }
+    .gl dl { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
   <aside class="side">
     <div class="brand"><div class="mark">CS</div><span>COIN SIEVE</span></div>
     <div class="modebadge admin-only">ADMIN MODE</div>
-    <div class="navlabel">Tiers</div>
-    <div class="nav" id="nav"></div>
+    <nav class="nav" id="nav"></nav>
     <div class="grow"></div>
-    <button class="sidelink" id="glossBtn" title="What do these numbers mean?"><span class="i">ⓘ</span><span class="t">How to read this</span></button>
+    <button class="sidelink" id="glossBtn"><span class="i" aria-hidden="true">ⓘ</span><span class="t" id="glossTxt"></span></button>
     <div class="admin-only">
-      <button class="runbtn" id="runBtn" title="Refresh this tier now (admin)">▶<span class="t" id="runTxt">Refresh</span></button>
+      <button class="runbtn" id="runBtn" title="Refresh the coverage list now (admin)">▶<span class="t" id="runTxt">Refresh</span></button>
       <div class="runstat" id="runStatus">idle</div>
     </div>
   </aside>
   <div class="market" id="market"></div>
-  <section class="center">
-    <div class="bar">
-      <div class="tf" id="tf"></div><div class="sep"></div>
-      <label class="search"><span>⌕</span><input id="search" placeholder="Search symbol, name, address"></label>
-      <span class="meta" id="meta"></span>
-    </div>
-    <div class="twrap" id="twrap"><table><colgroup id="cols"></colgroup><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
-    <div class="pager" id="pager"></div>
-  </section>
-  <aside class="right">
-    <div class="rtabs"><button id="tabToken" class="on">Token</button><button id="tabFilters">Filters</button></div>
+  <section class="center" id="center"></section>
+  <aside class="right" id="right">
+    <div class="rtabs" role="tablist"><button id="tabToken" class="on" role="tab">Token</button><button id="tabFilters" role="tab">Filters</button></div>
     <div class="rbody" id="rbody"></div>
   </aside>
 </div>
-<div class="overlay" id="overlay"><div class="modal"><div class="mh"><span id="mTitle"></span><button id="mClose" title="Close">✕</button></div><div class="mb" id="mBody"></div></div></div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="overlay" id="overlay"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="mh"><span id="mTitle"></span><button id="mClose" title="Close">✕</button></div><div class="mb" id="mBody"></div></div></div>
 
 <script>
 "use strict";
 const ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const ROW_H = 44, HEAD_H = 36;
-const TIER = {
-  new_launches: { short: "NL", color: "var(--nl)", sub: "6–48h old · passed every filter" },
-  emerging: { short: "EM", color: "var(--em)", sub: "7–180 days · $1M–50M market cap" },
-  established: { short: "ES", color: "var(--es)", sub: "1+ year · $200M+ market cap" },
+const COUNTS = ["ok", "blocked", "error", "listed"];   // link statuses that mean "the project lists this link"
+const ICONS = {  // Lucide-style strokes, static markup only
+  tokens: ["M3 3v18h18", "M7 14l4-4 4 4 5-6"],
+  methodology: ["M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20", "M8 7h8", "M8 11h6"],
 };
-// Tier icons (Lucide-style strokes): sparkles = fresh, sprout = growing, landmark = mature. Static markup only.
-const ICON_PATHS = {
-  new_launches: ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z", "M20 3v4", "M22 5h-4"],
-  emerging: ["M7 20h10", "M10 20c5.5-2.5.8-6.4 3-10", "M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z", "M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"],
-  established: ["M3 22h18", "M6 18v-7", "M10 18v-7", "M14 18v-7", "M18 18v-7", "M11.12 2.198a2 2 0 0 1 1.76.006l7.866 3.847c.476.233.31.949-.22.949H3.474c-.53 0-.695-.716-.22-.949z"],
-};
-function tierIcon(key, size) {
+function icon(key, size) {
   const ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg");
   for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor",
     "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) s.setAttribute(k, v);
-  for (const d of ICON_PATHS[key]) { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); s.append(p); }
+  for (const d of ICONS[key]) { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); s.append(p); }
   return s;
 }
-const PRESET_TEXT = { strict: "Fewer tokens, stronger numbers on every check.", balanced: "The default screen.",
-                      loose: "More tokens, weaker numbers — more noise." };
-// Plain-language explanations (shown as tooltips and in the "How to read this" guide). Wording rules apply here too.
-const EXPLAIN = {
-  liquidity: "Money sitting in the trading pool, in USD. More liquidity means trades move the price less.",
-  lp: "Share of the pool's money that nobody can withdraw. If the creator could withdraw it, they could empty the pool — the classic rug pull. 100% = fully locked.",
-  mcap: "Price × tokens in circulation. A rough measure of the token's size.",
-  fdv: "Price × every token that will ever exist, including ones not released yet.",
-  volume: "Dollar value traded in the last 24 hours.",
-  txns: "Number of trades (purchases and sales) in the last 24 hours.",
-  holders: "Wallets that hold the token right now (Jupiter data, matches the blockchain).",
-  growth: "How fast the number of holders is changing: per hour for New Launches, over 24 hours for the other tiers.",
-  top10: "Share of all tokens owned by the 10 biggest wallets, not counting the trading pool. If a few wallets own a lot, their selling can crash the price.",
-  top1: "Share owned by the single biggest wallet, not counting the trading pool.",
-  tophold: "Share held by the biggest wallets according to Jupiter. Can include team, treasury or exchange wallets.",
-  creator: "How many tokens the same creator wallet has launched. Serial launchers often abandon tokens quickly.",
-  organic: "Jupiter's estimate (0–100) of how much trading comes from real users rather than bots. Higher is better.",
-  mint: "Revoked = nobody can create new tokens, so holders can't be diluted by surprise.",
-  freeze: "Revoked = nobody can freeze wallets, so holders can't be blocked from selling.",
-  rugcheck: "RugCheck.xyz is an independent token scanner. Danger-level flags fail the check.",
-  launchpad: "New tokens start on a launchpad curve (e.g. pump.fun). We only list tokens that moved to a normal trading pool.",
-  socials: "Number of social links (X, Telegram, …) the project listed on DexScreener.",
-  type: "Stablecoins, staking tokens and tokenised stocks are excluded — they are not project tokens.",
-  age: "Time since the token's first trading pool was created.",
-  fng: "A third-party gauge of the overall crypto market's mood, from 0 (extreme fear) to 100 (extreme greed), built from price swings, momentum, social media and search trends. Updated once a day. It describes the mood — not where prices go next.",
-  mktcap: "Combined market value of all tracked cryptocurrencies, its change over 24 hours, and the dollar value traded in the last 24 hours.",
-  oi: "Open interest: the dollar value of futures and perpetual contracts that are still open. Total = summed across about 100 derivatives exchanges. Solana = SOL perpetual contracts on the two largest venues for them. The Total 24h change appears once a day of history is stored.",
-  dvol: "Dollar value of futures and perpetual contracts traded in the last 24 hours. Total = all derivatives exchanges summed. Solana = SOL perpetual contracts on the two largest venues for them.",
-  flow: "Share of the last 24 hours' trading volume (USD, all pools, Jupiter data) where traders acquired the token (teal) versus sold it (copper). One large wallet, or a bot trading with itself, can tilt it. It describes past trades only — not where the price goes next.",
-  chart: "Hourly closing prices of the token's largest pool (GeckoTerminal). Hours without trades have no candle, so the line joins the hours that had trades. The % compares the first and last point of this same line.",
-};
-const FAIL_LABEL = { age_min: "too young", age_max: "too old", launchpad: "still on launchpad", liquidity: "low liquidity",
-  volume: "low volume", txns: "few trades", socials: "no socials listed", creator: "serial creator", lp: "liquidity not locked",
-  top1: "one wallet holds too much", top10: "top wallets hold too much", rugcheck: "RugCheck flag", data: "incomplete data",
-  type: "stablecoin / staking / stock", mcap_min: "market cap too small", mcap_max: "market cap too large", holders: "too few holders",
-  organic: "mostly bot trading", mint: "mint authority active", freeze: "freeze authority active", top: "top wallets hold too much" };
-const CHECK_EXPLAIN = { age_min: "age", age_max: "age", launchpad: "launchpad", liquidity: "liquidity", volume: "volume", txns: "txns",
-  socials: "socials", creator: "creator", lp: "lp", top1: "top1", top10: "top10", rugcheck: "rugcheck", type: "type", mcap_min: "mcap",
-  mcap_max: "mcap", holders: "holders", organic: "organic", mint: "mint", freeze: "freeze", top: "tophold" };
 
-let S = null, tier = "new_launches", edited = {}, results = null, impact = {}, sortKey = null, sortDir = 1, statusFilter = "all";
-let prices = {}, priceTimer = null;  // address -> {price, change_24h}; polled for the rows on screen
-let page = 0, pageSize = 10, selected = null, rightTab = "token", evalTimer = null, pendingSelect = null, showAdvanced = false;
+let S = null, T = null;                       // state from /api/state, texts (site_text.yaml)
+let route = { name: "tokens", anchor: null };
+let view = "covered", query = "", sortKey = null, sortDir = 1, page = 0, pageSize = 10, selected = null, rightTab = "token";
+const DEF = { maxTop10: null, minMcap: null, minHolders: null, website: false, whitepaper: false, docs: false, github: false, x: false };
+let F = { ...DEF };                            // visitor filters: client-side only, never saved
+let edited = null, whatIf = null, impact = {}, evalTimer = null;   // admin: coverage criteria what-if
 
 const $ = (id) => document.getElementById(id);
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+const fill = (s, vars) => String(s).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
 const num = (v, d = 0) => v === null || v === undefined ? "–"
   : (Math.abs(v) < 0.5 / 10 ** d ? 0 : Number(v)).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
 function usd(v) { if (v === null || v === undefined) return "–"; const a = Math.abs(v);
-  for (const [div, s] of [[1e9, "B"], [1e6, "M"], [1e3, "K"]]) if (a >= div) return "$" + (v / div).toFixed(1) + s; return "$" + num(v); }
+  for (const [div, s] of [[1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]]) if (a >= div) return "$" + (v / div).toFixed(1) + s; return "$" + num(v); }
 function compact(v) { if (v === null || v === undefined) return "–"; const a = Math.abs(v);
-  if (a >= 1e6) return (v / 1e6).toFixed(1) + "M"; if (a >= 1e4) return (v / 1e3).toFixed(1) + "K"; return num(v); }
+  if (a >= 1e9) return (v / 1e9).toFixed(2) + "B"; if (a >= 1e6) return (v / 1e6).toFixed(1) + "M"; if (a >= 1e4) return (v / 1e3).toFixed(1) + "K"; return num(v); }
 const signed = (v, d, suf = "") => v == null ? "–" : (v >= 0.5 / 10 ** d ? "+" : "") + num(v, d) + suf;
 const tone = (v, d) => v == null ? "" : v >= 0.5 / 10 ** d ? "pos" : v <= -0.5 / 10 ** d ? "neg" : "";
 const pct = (v) => v == null ? "–" : v >= 99.95 ? "100%" : num(v, 1) + "%";
-const unitFmt = { usd, pct: (v) => num(v, v < 10 ? 1 : 0) + "%", h: (v) => num(v, 1) + "h", d: (v) => num(v) + "d", n: (v) => compact(v), x: (v) => num(v, 1) + "×" };
 function ago(ts) { const s = Date.now() / 1000 - ts; if (s < 3600) return Math.max(1, Math.round(s / 60)) + "m"; if (s < 86400) return Math.round(s / 3600) + "h"; return Math.round(s / 86400) + "d"; }
-const code = (r) => r.split(":")[0].trim();
-const label = (r) => S.reason_labels[code(r)] || code(r).replaceAll("_", " ");
-const res = (t) => (results && results[t.metrics.address]) || { status: "unknown", saved: "unknown", reasons: [], checks: [] };
-const tokensOf = () => S.tiers[tier].tokens;
-const concentration = (m) => tier === "new_launches" ? m.rc_top10_holders_pct : m.top_holders_pct;
-const isConcentrated = (m) => { const c = concentration(m); return c != null && c >= S.warn_pct; };
-const realChecks = (r) => (r.checks || []).filter((c) => !c.info);
+const clock = (ts) => new Date(ts * 1000).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+const SUBS = "₀₁₂₃₄₅₆₇₈₉";
+function fmtPrice(v) {  // tiny values get a zero count like DexScreener: 0.0000040 → $0.0₅40
+  if (v == null) return "–"; if (v >= 1) return "$" + num(v, v >= 1000 ? 0 : 2); if (v >= 0.0001) return "$" + Number(v.toPrecision(4));
+  const [mant, exp] = v.toExponential(3).split("e"), zeros = -Number(exp) - 1;
+  return "$0.0" + [...String(zeros)].map((d) => SUBS[d]).join("") + mant.replace(".", "").replace(/0+$/, "");
+}
+const httpsUrl = (u) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) ? u : null;
 
 async function api(path, body) {
   const opts = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Coin-Sieve": "1" }, body: JSON.stringify(body) } : {};
   const r = await fetch(path, opts); const j = await r.json();
-  if (!r.ok) throw new Error(j.error || r.statusText); return j;
+  if (!r.ok) throw new Error((j && j.error) || r.statusText); return j;
 }
 
-// ---- modal ----------------------------------------------------------------------
-function openModal(title, content) { $("mTitle").textContent = title; $("mBody").replaceChildren(content); $("overlay").classList.add("on"); }
+// ---- token data helpers ---------------------------------------------------------------
+const linkOk = (t, k) => !!(t.links && t.links[k] && COUNTS.includes(t.links[k].status));
+const profiled = (t) => !!t.links;
+const res = (t) => (whatIf && whatIf[t.metrics.address]) || { status: t.status, saved: t.status, checks: t.checks };
+const isEdited = () => edited && S.criteria && Object.keys(S.criteria).some((p) => String(edited[p]) !== String(S.criteria[p]));
+const covered = (t) => isEdited() ? res(t).status === "pass" : t.member;
+function docsScore(t) { if (!profiled(t)) return null; return (linkOk(t, "whitepaper") ? 2 : 0) + (linkOk(t, "docs") ? 1 : 0); }
+function top10(t) { const h = t.holders; return h && h.top10_excl_pct != null ? h.top10_excl_pct : null; }
+function hue(addr) { let h = 0; for (const c of addr) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+function coin(t, cls) {
+  const m = t.metrics, c = el("span", cls, (m.symbol || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
+  c.style.background = `hsl(${hue(m.address)} 45% 62%)`;
+  if (t.logo && ADDR.test(m.address)) { const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = "/api/logo/" + m.address; img.onerror = () => img.remove(); c.append(img); }
+  return c;
+}
+function two(main, sub, mainCls = "", subCls = "sub") { const d = el("div", "two"); d.append(el("span", mainCls, main), el("span", subCls, sub)); return d; }
+
+// ---- modal + glossary -------------------------------------------------------------------
+function openModal(title, content) { $("mTitle").textContent = title; $("mBody").replaceChildren(content); $("overlay").classList.add("on"); $("mClose").focus(); }
 function closeModal() { $("overlay").classList.remove("on"); }
 $("mClose").onclick = closeModal; $("overlay").onclick = (e) => { if (e.target === $("overlay")) closeModal(); };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
-
 function showGlossary() {
   const box = el("div", "gl");
-  const sections = [
-    ["Tiers", [["New Launches", "Tokens 6–48 hours old that passed every check below. The most speculative tier."],
-               ["Emerging", "Tokens 7–180 days old with a $1M–50M market cap that pass the Emerging checks."],
-               ["Established", "Tokens over a year old with a $200M+ market cap. 'Established' describes size and age — not quality."]]],
-    ["Status", [["● PASS", "Passes every check with the current filters."], ["● FAIL", "At least one check failed — the list shows which."],
-                ["● UNKNOWN", "Never reached a later check (e.g. RugCheck), so it is decided on the next refresh."],
-                ["⚠ Concentrated", `Top wallets hold at least ${S.warn_pct}% of supply. Not necessarily a problem (can be team, treasury or exchange wallets), but big holders selling can move the price sharply.`]]],
-    ["Numbers", [["Liquidity", EXPLAIN.liquidity], ["Liquidity locked", EXPLAIN.lp], ["Market cap", EXPLAIN.mcap], ["FDV", EXPLAIN.fdv],
-                 ["Volume 24h", EXPLAIN.volume], ["Bought / sold", EXPLAIN.flow], ["Price chart", EXPLAIN.chart], ["Trades 24h", EXPLAIN.txns], ["Holders", EXPLAIN.holders], ["Holder growth", EXPLAIN.growth],
-                 ["Top 10 wallets", EXPLAIN.top10], ["Largest wallet", EXPLAIN.top1], ["Top wallets (Jupiter)", EXPLAIN.tophold],
-                 ["Creator's launches", EXPLAIN.creator], ["Organic score", EXPLAIN.organic], ["Mint authority", EXPLAIN.mint],
-                 ["Freeze authority", EXPLAIN.freeze], ["RugCheck", EXPLAIN.rugcheck]]],
-  ];
-  for (const [h, rows] of sections) { box.append(el("h3", null, h)); const dl = el("dl"); for (const [k, v] of rows) dl.append(el("dt", null, k), el("dd", null, v)); box.append(dl); }
-  const disc = el("p", "sub", S.disclaimer); disc.style.marginTop = "16px"; box.append(disc);
-  openModal("How to read Coin Sieve", box);
+  for (const sec of T.glossary) { box.append(el("h3", null, sec.heading)); const dl = el("dl"); for (const [k, v] of sec.items) dl.append(el("dt", null, k), el("dd", null, v)); box.append(dl); }
+  const disc = el("p", "sub", T.disclaimer); disc.style.marginTop = "16px"; box.append(disc);
+  openModal(T.nav.glossary, box);
 }
 $("glossBtn").onclick = showGlossary;
 
-// ---- table columns (widths sum to 100%) -----------------------------------------
-function two(main, sub, mainCls = "", subCls = "sub") { const d = el("div", "two"); d.append(el("span", mainCls, main), el("span", subCls, sub)); return d; }
-const STATUS = { key: "status", label: "Status", w: 10, get: (t) => ({ pass: 0, unknown: 1, fail: 2 })[res(t).status],
-  cell: (t) => { const r = res(t), s = el("span"); s.append(el("span", "st " + r.status, "● " + r.status.toUpperCase()));
-    if (r.status !== r.saved) s.append(el("span", "chg " + (r.status === "pass" ? "up" : "down"), r.status === "pass" ? "▲" : "▼")); return s; } };
-// Round token avatar: letter in the tier colour, covered by the vetted logo from /api/logo when one exists.
-function coin(m, cls) {
-  const c = el("span", cls, (m.symbol || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
-  c.style.background = TIER[tier].color;
-  if (m.icon && ADDR.test(m.address)) {
-    const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = "/api/logo/" + m.address;
-    img.onerror = () => img.remove(); c.append(img);
-  }
-  return c;
-}
-const TOKEN = (sub, w = 17) => ({ key: "symbol", label: "Token", w, get: (t) => (t.metrics.symbol || "").toLowerCase(),
-  cell: (t) => { const row = el("div", "tokcell"), d = el("div", "two"), top = el("span"); row.append(coin(t.metrics, "coin"), d);
-    top.append(el("span", "sym", t.metrics.symbol || "?"));
-    if (isConcentrated(t.metrics)) { const w = el("span", "warn", "⚠"); w.title = `Top wallets hold ${pct(concentration(t.metrics))} of supply`; top.append(w); }
-    d.append(top, el("span", "sub", sub(t.metrics))); return row; } });
-// Live price; tiny values get a zero count like DexScreener: 0.0000040 → $0.0₅40
-const SUBS = "₀₁₂₃₄₅₆₇₈₉";
-function fmtPrice(v) {
-  if (v == null) return "–"; if (v >= 1) return "$" + num(v, v >= 1000 ? 0 : 2); if (v >= 0.0001) return "$" + Number(v.toPrecision(4));
-  const [mant, exp] = v.toExponential(3).split("e"), zeros = -Number(exp) - 1;  // zeros after the decimal point
-  return "$0.0" + [...String(zeros)].map((d) => SUBS[d]).join("") + mant.replace(".", "").replace(/0+$/, "");
-}
-function fillPrice(s, p) {  // price on top, 24h change below
-  const ch = p ? p.change_24h : null;
-  s.replaceChildren(el("span", "pv", p ? fmtPrice(p.price) : "–"), el("span", "sub " + tone(ch, 1), ch == null ? "" : signed(ch, 1, "% 24h")));
-  s.title = p && p.price != null ? `Current price (Jupiter), refreshed every ${S.price_refresh_s} s: $${p.price}` : "Price not available yet";
-}
-function priceCell(addr) { const s = el("div", "two px"), p = prices[addr]; s.dataset.addr = addr; s.dataset.v = p ? p.price ?? "" : ""; fillPrice(s, p); return s; }
-const PRICE = (w) => ({ key: "price", label: "Price", w, r: 1, num: 1, get: (t) => (prices[t.metrics.address] || {}).price ?? null,
-  cell: (t) => priceCell(t.metrics.address) });
-async function pollPrices() {
-  clearTimeout(priceTimer); priceTimer = setTimeout(pollPrices, S.price_refresh_s * 1000);
-  const spans = [...document.querySelectorAll(".px[data-addr]")];
-  if (document.hidden || !spans.length) return;
-  try {
-    const j = await api("/api/prices?ids=" + [...new Set(spans.map((s) => s.dataset.addr))].join(","));
-    Object.assign(prices, j.prices);
-    for (const s of document.querySelectorAll(".px[data-addr]")) {  // update in place; flash on change
-      const p = prices[s.dataset.addr], old = parseFloat(s.dataset.v);
-      if (!p) continue; fillPrice(s, p);
-      if (p.price != null && !isNaN(old) && p.price !== old) { s.classList.remove("flash-up", "flash-down"); void s.offsetWidth; s.classList.add(p.price > old ? "flash-up" : "flash-down"); }
-      s.dataset.v = p.price ?? "";
-    }
-  } catch (e) { /* keep last prices; retry next tick */ }
-}
-const WHY = (w) => ({ key: "why", label: "Why", w, get: (t) => realChecks(res(t)).filter((c) => c.ok === false).length,
-  cell: (t, td) => { const r = res(t), checks = realChecks(r), merged = mergedChecks(checks);
-    let cls = "why", text;
-    if (r.status === "pass") { cls = "why ok"; text = "✓ all passed"; }
-    else if (r.status === "unknown") { td.title = "Creator history and RugCheck run on the next refresh"; text = "waiting for next refresh"; }
-    else { const failed = checks.filter((c) => c.ok === false); td.title = failed.map((c) => `${c.label}: ${c.value} (${c.limit})`).join("\n");
-      text = [...new Set(failed.map((c) => FAIL_LABEL[c.id] || c.label.toLowerCase()))].join(", ") || r.reasons.map(label).join(", "); }
-    const top = el("span", cls); top.append(el("span", "cnt", `${merged.filter((c) => c.ok === true).length}/${merged.length}`), text); return top; } });
-const n = (key, label, w, fmt, extra = {}) => ({ key, label, w, r: 1, num: 1, fmt, ...extra });
-// Price sparkline: SVG built server-side from stored numbers only (charts.py); % from the same series.
+// ---- columns (widths sum to 100%) -----------------------------------------------------------
 const SVG_OK = /^<svg [^<>]*><polyline [^<>]*\/><\/svg>$/;
 const spanText = (h) => h >= 48 ? num(h / 24) + "d" : num(h) + "h";
-const chartLabel = () => { const h = S.tiers[tier].chart_hours; return (h >= 72 && h % 24 === 0 ? h / 24 + "d" : h + "h") + " Price"; };
-const CHART = (w) => ({ key: "chart", label: chartLabel, w, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null,
-  cell: (t, td) => { const c = t.chart;
-    if (!c || !SVG_OK.test(c.svg)) { td.title = "No price history stored yet (fetched in the background, a few tokens per run)"; return el("span", "sub", "–"); }
-    const d = el("div", "sparkcell" + (c.stale ? " stale" : "")), g = el("span", "sparkwrap"); g.innerHTML = c.svg;
-    const short = c.span_h < c.window_h * 0.9 ? spanText(c.span_h) : "";
-    d.append(g, two(signed(c.change_pct, 1, "%"), c.stale ? "stale" : short, tone(c.change_pct, 1)));
-    td.title = `${EXPLAIN.chart}\n\n${c.points} hourly closes over ${spanText(c.span_h)}: ${fmtPrice(c.first)} → ${fmtPrice(c.last)}` +
-               `\nUpdated ${ago(c.fetched_at)} ago` + (c.stale ? " — stale, newer data not fetched yet" : "");
-    return d; } });
-// Bought / sold: 24h USD volume split from Jupiter, shown as shares. Missing data -> "–".
-function flowShare(m) { const b = m.bought_usd_h24, s = m.sold_usd_h24; return b == null || s == null || b + s <= 0 ? null : b / (b + s) * 100; }
-function flowBar(m, cls = "flow") {
-  const p = flowShare(m), d = el("div", cls), bar = el("div", "vbar"), a = el("span", "in"), b = el("span", "out");
-  a.style.width = p + "%"; b.style.width = 100 - p + "%"; bar.append(a, b); d.append(bar); return d;
-}
-const flowTip = (m) => `${EXPLAIN.flow}\n\nBought ${usd(m.bought_usd_h24)} · sold ${usd(m.sold_usd_h24)} in the last 24h`;
-const FLOW = (w) => ({ key: "flow", label: "Bought / sold", w, r: 1, num: 1, get: (t) => flowShare(t.metrics),
-  cell: (t, td) => { const m = t.metrics, p = flowShare(m);
-    if (p == null) { td.title = "No 24h volume split from Jupiter for this token"; return el("span", "sub", "–"); }
-    const d = flowBar(m); d.append(el("span", "sub", `${num(p)}% / ${num(100 - p)}%`)); td.title = flowTip(m); return d; } });
-const COLS = {
-  new_launches: [STATUS, TOKEN((m) => [m.name, m.age_h == null ? "" : num(m.age_h, 1) + "h"].filter(Boolean).join(" · "), 16), PRICE(11),
-    n("market_cap_usd", "MCap", 9, usd), n("volume_h24_usd", "Volume", 9, usd), CHART(14), FLOW(12), WHY(19)],
-  jup: [STATUS, TOKEN((m) => [m.name, m.age_d == null ? "" : num(m.age_d) + "d"].filter(Boolean).join(" · "), 16), PRICE(11),
-    n("mcap_usd", "MCap", 9, usd), n("volume_h24_usd", "Volume", 9, usd), CHART(14), FLOW(12), WHY(19)],
-};
-const cols = () => tier === "new_launches" ? COLS.new_launches : COLS.jup;
-const valueOf = (c, t) => c.get ? c.get(t) : t.metrics[c.key];
+const COLS = [
+  { key: "token", w: 20, get: (t) => (t.metrics.symbol || "").toLowerCase(), cell: (t) => {
+      const m = t.metrics, row = el("div", "tokcell"), d = el("div", "two"), top = el("span");
+      top.append(el("span", "sym", m.symbol || "?"), el("span", "chain", "SOL"));
+      let sub = m.name || "";
+      if (view === "outside") { const r = res(t), bad = (r.checks || []).find((c) => !c.info && c.ok !== true); if (bad) sub = (bad.ok === false ? "✕ " : "? ") + bad.label; }
+      d.append(top, el("span", "sub" + (view === "outside" ? " miss" : ""), sub)); row.append(coin(t, "coin"), d); return row; } },
+  { key: "price", w: 11, r: 1, num: 1, get: (t) => t.metrics.price_usd, cell: (t, td) => {
+      td.title = fill(T.table.as_of, { time: clock(t.ts) }); return el("span", "px pv", fmtPrice(t.metrics.price_usd)); } },
+  { key: "mcap", w: 9, r: 1, num: 1, get: (t) => t.metrics.mcap_usd, cell: (t) => el("span", null, usd(t.metrics.mcap_usd)) },
+  { key: "change_24h", w: 8, r: 1, num: 1, get: (t) => t.metrics.price_change_24h_pct, cell: (t) => { const v = t.metrics.price_change_24h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
+  { key: "chart_7d", w: 13, r: 1, num: 1, get: (t) => t.chart ? t.chart.change_pct : null, cell: (t, td) => {
+      const c = t.chart;
+      if (!c || !SVG_OK.test(c.svg)) { td.title = T.table.no_chart; return el("span", "sub", "–"); }
+      const d = el("div", "sparkcell" + (c.stale ? " stale" : "")), g = el("span", "sparkwrap"); g.innerHTML = c.svg;  // server-built from numbers only, shape-checked above
+      d.append(g, two(signed(c.change_pct, 1, "%"), c.stale ? T.table.chart_stale : (c.span_h < c.window_h * 0.9 ? spanText(c.span_h) : ""), tone(c.change_pct, 1)));
+      td.title = fill(T.table.chart_tip, { n: c.points, span: spanText(c.span_h), first: fmtPrice(c.first), last: fmtPrice(c.last), ago: ago(c.fetched_at) });
+      return d; } },
+  { key: "top10", w: 9, r: 1, num: 1, get: top10, cell: (t, td) => {
+      const h = t.holders;
+      if (!h || h.top10_excl_pct == null) { td.title = T.table.no_holder_data; return el("span", "sub", "–"); }
+      td.title = fill(T.table.top10_tip, { excl: pct(h.top10_excl_pct), all: pct(h.top10_all_pct), out: pct(h.excluded_pct) }) + (h.complete ? "" : "\n" + T.table.incomplete);
+      return el("span", null, (h.complete ? "" : "≥") + pct(h.top10_excl_pct)); } },
+  { key: "holders", w: 9, r: 1, num: 1, get: (t) => t.metrics.holders, cell: (t) => el("span", null, compact(t.metrics.holders)) },
+  { key: "unlock", w: 9, r: 1, get: () => null, cell: (t, td) => { td.title = T.filters.unlock_unavailable; return two("–", T.table.no_unlock); } },
+  { key: "docs", w: 12, get: docsScore, cell: (t) => {
+      const d = el("span", "doc");
+      if (!profiled(t)) { d.append(el("span", "sub", "–")); return d; }
+      const found = [linkOk(t, "whitepaper") && T.table.whitepaper, linkOk(t, "docs") && T.table.docs].filter(Boolean);
+      if (found.length) d.append(el("span", "y", "✓"), found.join(" · ")); else d.append(el("span", "n", "✕"), el("span", "sub", T.table.no_docs));
+      return d; } },
+];
+const colText = (c) => T.columns[c.key];
 
-// ---- market strip (cached server-side; the page never calls these APIs) -----------------
+// ---- header tooltips (hover / focus / tap; Esc closes; Tab moves into the popover) ----------------
+let tipFor = null, tipBtn = null, tipHide = null, lastPointer = "mouse";
+document.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType || "mouse";
+  if (tipFor && !$("tip").contains(e.target) && !(e.target.closest && e.target.closest(".hl"))) hideTip(); }, true);
+function showTip(btn, col) {
+  clearTimeout(tipHide);
+  if (tipBtn && tipBtn !== btn) tipBtn.setAttribute("aria-expanded", "false");
+  const tx = colText(col), tip = $("tip"); tipFor = col.key; tipBtn = btn;
+  const body = el("p", null, tx.body); body.id = "tipBody";
+  const more = el("a", null, T.tip.more); more.href = "#/methodology/" + tx.more;
+  more.onclick = () => hideTip();
+  const sort = el("button", null, T.tip.sort); sort.onclick = () => { hideTip(); sortBy(col); };
+  const ta = el("div", "ta"); ta.append(more, sort);
+  tip.replaceChildren(el("h4", null, tx.title), body, ta); tip.hidden = false;
+  btn.setAttribute("aria-expanded", "true"); btn.setAttribute("aria-describedby", "tipBody");
+  const r = btn.getBoundingClientRect(), w = tip.offsetWidth;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tip.style.top = Math.min(r.bottom + 6, innerHeight - tip.offsetHeight - 8) + "px";
+}
+function hideTip() { clearTimeout(tipHide); $("tip").hidden = true; if (tipBtn) { tipBtn.setAttribute("aria-expanded", "false"); tipBtn.removeAttribute("aria-describedby"); } tipFor = null; tipBtn = null; }
+function hideTipSoon() { clearTimeout(tipHide); tipHide = setTimeout(hideTip, 220); }
+$("tip").onmouseenter = () => clearTimeout(tipHide); $("tip").onmouseleave = hideTipSoon;
+$("tip").addEventListener("keydown", (e) => {
+  const items = [...$("tip").querySelectorAll("a, button")];
+  if (e.key === "Escape") { const b = tipBtn; hideTip(); if (b) b.focus(); e.preventDefault(); }
+  else if (e.key === "Tab" && e.shiftKey && document.activeElement === items[0]) { e.preventDefault(); tipBtn.focus(); }
+  else if (e.key === "Tab" && !e.shiftKey && document.activeElement === items[items.length - 1]) {
+    e.preventDefault(); const hs = [...document.querySelectorAll(".hl")], i = hs.indexOf(tipBtn); hideTip(); (hs[i + 1] || hs[i]).focus(); }
+});
+$("tip").addEventListener("focusout", (e) => { if (!$("tip").contains(e.relatedTarget) && e.relatedTarget !== tipBtn) hideTipSoon(); });
+addEventListener("resize", hideTip);
+
+function sortBy(c) { sortDir = sortKey === c.key ? -sortDir : (c.key === "token" ? 1 : -1); sortKey = c.key; page = 0; renderTable(); }
+function headerCell(c) {
+  const th = el("th", c.r ? "r" : ""), w = el("div", "thw"), b = el("button", "hl", colText(c).short || colText(c).title);
+  b.type = "button"; b.setAttribute("aria-expanded", "false"); b.setAttribute("aria-controls", "tip");
+  b.onmouseenter = () => { if (lastPointer !== "touch") showTip(b, c); };
+  b.onmouseleave = hideTipSoon;
+  b.onfocus = () => { if (lastPointer !== "touch") showTip(b, c); };
+  b.onblur = (e) => { if (!$("tip").contains(e.relatedTarget)) hideTipSoon(); };
+  b.onclick = (e) => { e.stopPropagation(); if (lastPointer === "touch" && tipFor !== c.key) { showTip(b, c); return; } hideTip(); sortBy(c); };
+  b.onkeydown = (e) => {
+    if (e.key === "Escape") { hideTip(); e.preventDefault(); }
+    else if (e.key === "Tab" && !e.shiftKey && tipFor === c.key) { const first = $("tip").querySelector("a"); if (first) { e.preventDefault(); first.focus(); } }
+  };
+  w.append(b); if (sortKey === c.key) w.append(el("span", "ar", sortDir > 0 ? "▲" : "▼"));
+  th.append(w); th.onclick = () => sortBy(c);
+  return th;
+}
+
+// ---- market strip (cached server-side; the page never calls these APIs) ----------------------
 let M = null, marketTimer = null;
 const SVGNS = "http://www.w3.org/2000/svg";
 function bigUsd(v) { if (v == null) return "–"; for (const [d, u] of [[1e12, "T"], [1e9, "B"], [1e6, "M"]]) if (Math.abs(v) >= d) return "$" + (v / d).toFixed(2) + u; return usd(v); }
 const chg = (v) => v == null ? null : el("span", "mchg " + tone(v, 2), (v >= 0 ? "▲" : "▼") + num(Math.abs(v), 2) + "%");
-const FNG_COLORS = ["#ea3943", "#ea8c00", "#f3d42f", "#93d900", "#16c784"];  // 0–20 … 80–100
+const FNG_COLORS = ["#ea3943", "#ea8c00", "#f3d42f", "#93d900", "#16c784"];
 function gauge(value) {
   const svg = document.createElementNS(SVGNS, "svg"); svg.setAttribute("width", "92"); svg.setAttribute("height", "52"); svg.setAttribute("viewBox", "0 0 92 52");
   const cx = 46, cy = 46, r = 38, pt = (v) => { const a = Math.PI * (1 - v / 100); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
@@ -462,277 +431,308 @@ function mcard(title, tip, section) {
 }
 function mrow(label, value, change) { const r = el("div", "mrow"), v = el("span", "mv", value); if (change) v.append(change); r.append(el("span", "ml", label), v); return r; }
 function renderMarket() {
+  if (!T) return;
   const box = $("market"), f = M && M.fng, g = M && M.global, tot = M && M.total, sol = M && M.sol; box.replaceChildren();
-  const c1 = mcard("Fear & Greed", EXPLAIN.fng, "fng"), w = el("div", "fng"), info = el("div");
-  w.append(gauge(f ? f.value : null));
-  info.append(el("div", "big", f ? String(f.value) : "–"));
+  const c1 = mcard("Fear & Greed", T.market.fng, "fng"), w = el("div", "fng"), info = el("div");
+  w.append(gauge(f ? f.value : null)); info.append(el("div", "big", f ? String(f.value) : "–"));
   if (f) { const l = el("span", "lbl", f.label); l.style.background = FNG_COLORS[Math.min(4, Math.floor(f.value / 20))]; info.append(l);
     if (f.prev != null) info.append(el("div", "yd", "Yesterday " + f.prev)); }
   w.append(info); c1.append(w);
-  const c2 = mcard("Market cap", EXPLAIN.mktcap, "global"), mc = el("div", "big", g ? bigUsd(g.mcap) : "–");
+  const c2 = mcard("Market cap", T.market.mktcap, "global"), mc = el("div", "big", g ? bigUsd(g.mcap) : "–");
   if (g && chg(g.mcap_change_24h_pct)) mc.append(chg(g.mcap_change_24h_pct)); c2.append(mc, mrow("Volume 24h", g ? bigUsd(g.volume) : "–"));
-  const c3 = mcard("Open interest", EXPLAIN.oi, "total");
+  const c3 = mcard("Open interest", T.market.oi, "total");
   c3.append(mrow("Total", tot ? bigUsd(tot.oi) : "–", tot && chg(tot.oi_change_24h_pct)), mrow("Solana", sol ? bigUsd(sol.oi) : "–", sol && chg(sol.oi_change_24h_pct)));
-  const c4 = mcard("Derivatives volume · 24h", EXPLAIN.dvol, "total");
+  const c4 = mcard("Derivatives volume · 24h", T.market.dvol, "total");
   c4.append(mrow("Total", tot ? bigUsd(tot.volume) : "–"), mrow("Solana", sol ? bigUsd(sol.volume) : "–"));
   box.append(c1, c2, c3, c4);
 }
 async function loadMarket() {
   clearTimeout(marketTimer);
   try { M = (await api("/api/market")).market; } catch (e) { /* keep last numbers */ }
-  renderMarket(); marketTimer = setTimeout(loadMarket, M ? 60000 : 8000);  // server refreshes every few minutes
+  renderMarket(); marketTimer = setTimeout(loadMarket, M ? 60000 : 8000);
 }
 
-// ---- sidebar / header --------------------------------------------------------------
-function switchTier(key) { tier = key; sortKey = null; sortDir = 1; page = 0; statusFilter = "all"; selected = null; results = null; $("search").value = ""; renderAll(); evaluate(); }
+// ---- routing + sidebar -------------------------------------------------------------------------
+function parseRoute() {
+  const h = location.hash.replace(/^#\/?/, "").split("/");
+  route = h[0] === "methodology" ? { name: "methodology", anchor: h[1] || null } : { name: "tokens", anchor: null };
+}
+addEventListener("hashchange", () => { parseRoute(); hideTip(); renderAll(); });
 function renderNav() {
   const nav = $("nav"); nav.replaceChildren();
-  for (const [key, t] of Object.entries(S.tiers)) {
-    const b = el("button", key === tier ? "on" : ""); b.title = t.label;
-    const ico = el("span", "ico"); ico.append(tierIcon(key, 16)); ico.style.background = TIER[key].color;
-    b.append(ico, el("span", "lbl", t.label), el("span", "cnt", String(t.members)));
-    b.onclick = () => { if (key !== tier) switchTier(key); }; nav.append(b);
+  for (const [key, href, label, count] of [["tokens", "#/tokens", T.nav.tokens, S.members], ["methodology", "#/methodology", T.nav.methodology, null]]) {
+    const a = el("a", route.name === key ? "on" : ""); a.href = href; a.title = label; if (route.name === key) a.setAttribute("aria-current", "page");
+    const ico = el("span", "ico"); ico.append(icon(key, 16)); a.append(ico, el("span", "lbl", label)); if (count != null) a.append(el("span", "cnt", String(count)));
+    nav.append(a);
   }
-}
-function applyPending() {
-  if (!pendingSelect || !results) return;
-  const rows = filteredRows(), i = rows.findIndex((t) => t.metrics.address === pendingSelect);
-  if (i >= 0) { selected = pendingSelect; page = Math.floor(i / pageSize); rightTab = "token"; }
-  pendingSelect = null;
-}
-function renderHead() {
-  const t = S.tiers[tier];
-  $("meta").textContent = t.last_run ? "Updated " + ago(t.last_run) + " ago" : "Not updated yet";
-}
-function renderTf() {
-  const tf = $("tf"); tf.replaceChildren();
-  for (const [k, l] of [["all", "All"], ["pass", "Pass"], ["fail", "Fail"], ["unknown", "Unknown"], ["changed", "Changed"]]) {
-    const b = el("button", statusFilter === k ? "on" : "", l); b.onclick = () => { statusFilter = k; page = 0; renderTf(); renderTable(); }; tf.append(b);
-  }
+  $("glossTxt").textContent = T.nav.glossary;
 }
 
-// ---- table ------------------------------------------------------------------------
+// ---- tokens view: bar, chips, table, pager ---------------------------------------------------------
+function renderTokensView() {
+  const center = $("center"); center.replaceChildren();
+  const bar = el("div", "bar");
+  if (S.mode !== "public") {
+    const tf = el("div", "tf");
+    for (const [k, l] of [["covered", T.table.view_covered], ["outside", T.table.view_outside]]) {
+      const b = el("button", view === k ? "on" : "", l); b.onclick = () => { view = k; page = 0; selected = null; renderTokensView(); renderRight(); }; tf.append(b); }
+    bar.append(tf, el("div", "sep"));
+  }
+  const chips = el("div", "chips"), lim = F.maxTop10 ?? 30;
+  const chip = (text, on, click, disabled, title) => { const c = el("button", "chip" + (on ? " on" : ""), text); c.setAttribute("aria-pressed", on ? "true" : "false");
+    c.disabled = !!disabled; if (title) c.title = title; c.onclick = click; chips.append(c); };
+  chip(fill(T.filters.chip_top10, { n: lim }), F.maxTop10 != null, () => { F.maxTop10 = F.maxTop10 == null ? 30 : null; filtersChanged(); });
+  chip(T.filters.chip_whitepaper, F.whitepaper, () => { F.whitepaper = !F.whitepaper; filtersChanged(); });
+  chip(T.filters.chip_unlock, false, null, true, T.filters.unlock_unavailable);
+  const search = el("label", "search"), inp = el("input"); inp.id = "search"; inp.placeholder = T.table.search; inp.setAttribute("aria-label", T.table.search);
+  inp.value = query; inp.oninput = () => { query = inp.value; page = 0; renderTable(); }; search.append(el("span", null, "⌕"), inp);
+  const stale = S.last_run && S.now - S.last_run > S.stale_after_s;
+  const meta = el("span", "meta" + (stale ? " stale" : ""), S.last_run ? fill(T.table.updated, { ago: ago(S.last_run) }) + (stale ? " · " + T.table.stale : "") : T.table.never);
+  bar.append(chips, el("div", "sep"), search, meta);
+  const wrap = el("div", "twrap"); wrap.id = "twrap";
+  const table = el("table", "list"), cg = el("colgroup"); cg.id = "cols"; const th = el("thead"); th.id = "thead"; const tb = el("tbody"); tb.id = "tbody";
+  table.append(cg, th, tb); wrap.append(table);
+  const pager = el("div", "pager"); pager.id = "pager";
+  center.append(bar, wrap, pager, el("div", "disc", T.disclaimer));
+  ro.disconnect(); ro.observe(wrap);
+  renderTable();
+}
+function passesFilters(t) {
+  const m = t.metrics, q = query.trim().toLowerCase();
+  if (q && !((m.symbol || "") + " " + (m.name || "") + " " + m.address).toLowerCase().includes(q)) return false;
+  if (F.maxTop10 != null) {  // unknown or only a lower bound ("≥") can't be confirmed below the limit -> hidden
+    const h = t.holders; if (!h || h.top10_excl_pct == null || !h.complete || h.top10_excl_pct >= F.maxTop10) return false; }
+  if (F.minMcap != null && !((m.mcap_usd ?? -1) >= F.minMcap)) return false;
+  if (F.minHolders != null && !((m.holders ?? -1) >= F.minHolders)) return false;
+  for (const k of ["website", "whitepaper", "docs", "github", "x"]) if (F[k] && !linkOk(t, k)) return false;
+  return true;
+}
 function filteredRows() {
-  const q = $("search").value.trim().toLowerCase(), cs = cols();
-  const rows = tokensOf().filter((t) => { const r = res(t), m = t.metrics;
-    if (q && !((m.symbol || "") + " " + (m.name || "") + " " + m.address).toLowerCase().includes(q)) return false;
-    if (statusFilter === "changed") return r.status !== r.saved;
-    return statusFilter === "all" || r.status === statusFilter; });
-  const sc = cs.find((c) => c.key === sortKey) || cs[0], dir = sortKey ? sortDir : 1;
-  return rows.sort((a, b) => { const va = valueOf(sc, a), vb = valueOf(sc, b);
+  const rows = S.tokens.filter((t) => (view === "covered" ? covered(t) : !covered(t)) && passesFilters(t));
+  const sc = COLS.find((c) => c.key === sortKey);
+  const get = sc ? sc.get : (t) => t.metrics.mcap_usd, dir = sc ? sortDir : -1;
+  return rows.sort((a, b) => { const va = get(a), vb = get(b);
     if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return (va < vb ? -1 : va > vb ? 1 : 0) * dir; });
 }
 function renderTable() {
-  const cs = cols();
-  $("cols").replaceChildren(...cs.map((c) => { const col = el("col"); col.style.width = c.w + "%"; return col; }));
-  const tr = el("tr");
-  for (const c of cs) { const th = el("th", c.r ? "r" : "", typeof c.label === "function" ? c.label() : c.label); if (sortKey === c.key) th.append(el("span", "ar", sortDir > 0 ? " ▲" : " ▼"));
-    th.onclick = () => { sortDir = sortKey === c.key ? -sortDir : (["symbol", "status", "why"].includes(c.key) ? 1 : -1); sortKey = c.key; page = 0; renderTable(); }; tr.append(th); }
-  $("thead").replaceChildren(tr);
-  const body = $("tbody");
-  if (!results) { body.replaceChildren(emptyRow(cs.length, "Evaluating…")); $("pager").replaceChildren(); return; }
+  if (!$("tbody")) return;
+  $("cols").replaceChildren(...COLS.map((c) => { const col = el("col"); col.style.width = c.w + "%"; return col; }));
+  const tr = el("tr"); for (const c of COLS) tr.append(headerCell(c)); $("thead").replaceChildren(tr);
   pageSize = Math.max(4, Math.floor(($("twrap").clientHeight - HEAD_H) / ROW_H));
   const rows = filteredRows(), pages = Math.max(1, Math.ceil(rows.length / pageSize));
   page = Math.min(page, pages - 1);
-  if (!selected || !tokensOf().some((t) => t.metrics.address === selected)) selected = rows[0] ? rows[0].metrics.address : null;
+  if (!selected || !rows.some((t) => t.metrics.address === selected)) selected = rows[0] ? rows[0].metrics.address : null;
   const frag = document.createDocumentFragment();
   for (const t of rows.slice(page * pageSize, (page + 1) * pageSize)) {
-    const row = el("tr", t.metrics.address === selected ? "sel" : "");
-    row.onclick = () => { selected = t.metrics.address; rightTab = "token"; renderTable(); renderRight(); };
-    for (const c of cs) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : ""));
-      if (c.cell) td.append(c.cell(t, td));
-      else { const v = valueOf(c, t); td.textContent = c.fmt ? c.fmt(v) : (v ?? "–"); const k = c.cls && c.cls(v); if (k) td.classList.add(k); }
-      row.append(td); }
+    const row = el("tr", t.metrics.address === selected ? "sel" : ""); row.tabIndex = 0;
+    const pick = () => { selected = t.metrics.address; rightTab = "token"; renderTable(); renderRight(); };
+    row.onclick = pick; row.onkeydown = (e) => { if (e.key === "Enter") pick(); };
+    for (const c of COLS) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : "")); td.append(c.cell(t, td)); row.append(td); }
     frag.append(row);
   }
-  body.replaceChildren(frag);
-  if (!rows.length) body.append(emptyRow(cs.length, "No tokens match."));
+  $("tbody").replaceChildren(frag);
+  if (!rows.length) { const r = el("tr"), td = el("td", "empty", view === "covered" && !S.members && !isEdited() ? T.table.none_yet : T.table.empty); td.colSpan = COLS.length; r.append(td); $("tbody").append(r); }
   renderPager(rows.length, pages);
-  if (rows.slice(page * pageSize, (page + 1) * pageSize).some((t) => !(t.metrics.address in prices))) { clearTimeout(priceTimer); priceTimer = setTimeout(pollPrices, 300); }  // new rows: fetch now
 }
-function emptyRow(span, text) { const tr = el("tr"), td = el("td", "empty", text); td.colSpan = span; tr.append(td); return tr; }
 function renderPager(total, pages) {
   const p = $("pager"); p.replaceChildren();
-  p.append(el("span", "info", `${total ? page * pageSize + 1 : 0}–${Math.min(total, (page + 1) * pageSize)} of ${total} tokens`));
+  p.append(el("span", "info", `${total ? page * pageSize + 1 : 0}–${Math.min(total, (page + 1) * pageSize)} of ${total} ` + (view === "covered" ? T.table.covered : T.table.outside)));
   const btn = (text, target, on = false, disabled = false) => { const b = el("button", on ? "on" : "", text); b.disabled = disabled; b.onclick = () => { page = target; renderTable(); }; return b; };
   p.append(btn("‹", page - 1, false, page === 0)); let prev = -1;
   for (const i of [...new Set([0, pages - 1, page - 1, page, page + 1])].filter((i) => i >= 0 && i < pages).sort((a, b) => a - b)) {
     if (i - prev > 1) p.append(el("span", "gap", "…")); p.append(btn(String(i + 1), i, i === page)); prev = i; }
   p.append(btn("›", page + 1, false, page >= pages - 1));
 }
+const ro = new ResizeObserver(() => { if (S && route.name === "tokens") renderTable(); });
 
-// ---- right panel: token -------------------------------------------------------------
-function box(l, v, tip, cls = "") { const b = el("div", "box"); b.title = tip; b.append(el("div", "l", l), el("div", "v " + cls, v)); return b; }
-function mergedChecks(checks) {  // show min/max pairs (Age, Market cap) as one row
-  const out = [];
-  for (const c of checks) {
-    const prev = out[out.length - 1];
-    if (prev && prev.label === c.label && prev.value === c.value && !c.info && !prev.info) {
-      prev.limit = prev.limit + " · " + c.limit; prev.ok = prev.ok === false || c.ok === false ? false : (prev.ok === null || c.ok === null ? null : true);
-    } else out.push({ ...c });
+// ---- methodology view ------------------------------------------------------------------------------------
+function criteriaRows() {
+  const c = S.criteria, mt = T.methodology, ck = T.checks;
+  const req = (v) => v ? mt.required : mt.not_required;
+  return [[ck.age.label, fill(mt.min_days, { n: num(c["coverage.min_age_days"]) })],
+          [ck.type.label, fill(mt.excluded, { tags: S.exclude_tags.join(", ") })],
+          [ck.mcap.label, fill(mt.or_more, { v: usd(c["coverage.min_mcap_usd"]) })],
+          [ck.liquidity.label, fill(mt.or_more, { v: usd(c["coverage.min_liquidity_usd"]) })],
+          [ck.native.label, req(c["coverage.require_native_chain"])],
+          [ck.links.label, req(c["coverage.require_website_or_docs"])],
+          [mt.grace, fill(mt.grace_value, { n: num(c["coverage.leave_after_hours"]) })]];
+}
+function kvTable(head, rows, monoCols = []) {
+  const t = el("table", "kv"), tr = el("tr"); for (const h of head) tr.append(el("th", null, h)); const th = el("thead"); th.append(tr); t.append(th);
+  const tb = el("tbody"); for (const r of rows) { const row = el("tr"); r.forEach((v, i) => row.append(el("td", monoCols.includes(i) ? "m" : null, v))); tb.append(row); } t.append(tb); return t;
+}
+function renderMethodology() {
+  const mt = T.methodology, center = $("center"); center.replaceChildren();
+  const art = el("article", "article"), inner = el("div", "inner");
+  inner.append(el("h1", null, mt.title), el("p", "lead", mt.intro));
+  const toc = el("nav", "toc"); toc.setAttribute("aria-label", mt.contents);
+  for (const s of mt.sections) { const a = el("a", null, s.title); a.href = "#/methodology/" + s.id; toc.append(a); }
+  inner.append(toc);
+  for (const s of mt.sections) {
+    const h = el("h2", null, s.title); h.id = "m-" + s.id; h.tabIndex = -1; inner.append(h);
+    for (const p of s.paras || []) inner.append(el("p", null, p));
+    if (s.table === "coverage") inner.append(kvTable([mt.criterion, mt.value], criteriaRows(), [1]));
+    if (s.table === "sources") inner.append(kvTable([mt.source, mt.provides, mt.cadence, mt.last],
+      T.sources.map((x) => [x.name, x.what, x.cadence, S.sources[x.key] ? fill(mt.ago, { ago: ago(S.sources[x.key]) }) : mt.never])));
   }
-  return out;
+  art.append(inner); center.append(art, el("div", "disc", T.disclaimer));
+  if (route.anchor) { const h = $("m-" + route.anchor); if (h) { h.scrollIntoView({ block: "start" }); h.classList.add("flash"); h.focus({ preventScroll: true }); } }
+}
+
+// ---- right panel: token ---------------------------------------------------------------------------------
+function box(l, v, tip, cls = "") { const b = el("div", "box"); b.title = tip || ""; b.append(el("div", "l", l), el("div", "v " + cls, v)); return b; }
+function linkChip(t, k) {
+  const l = t.links && t.links[k], ok = linkOk(t, k), url = ok && httpsUrl(l.url);
+  const c = el(url ? "a" : "span", "lc" + (ok ? "" : " no"));
+  if (url) { c.href = url; c.target = "_blank"; c.rel = "noopener noreferrer nofollow"; }
+  c.append(el("span", ok ? "y" : "n", ok ? "✓" : "✕"), T.links[k]);
+  const src = l ? (T.sources_short[l.source] || l.source) : "";
+  c.title = !profiled(t) ? T.panel.no_links : !l ? T.link_status.none
+    : (T.link_status[l.status] || "") + (src ? ` (${src}, ${clock(l.checked_at)})` : "");
+  return c;
 }
 function renderToken(body) {
-  const t = tokensOf().find((x) => x.metrics.address === selected);
-  if (!t) { body.append(el("div", "placeholder", "Select a token in the table")); return; }
-  const m = t.metrics, r = res(t), nl = tier === "new_launches";
-  const head = el("div", "tok"), av = coin(m, "av");
-  const info = el("div"); info.style.minWidth = "0";
-  const nm = el("div", "nm", m.symbol || "?"); const bd = el("span", "badge"); bd.title = S.tiers[tier].label; bd.append(tierIcon(tier, 12)); bd.style.background = TIER[tier].color; bd.style.color = "#0d0e11"; nm.append(bd);
-  info.append(nm, el("div", "ds", [m.name, nl ? num(m.age_h, 1) + "h old" : num(m.age_d) + " days old"].filter(Boolean).join(" · ")));
-  head.append(av, info); body.append(head);
-  if (isConcentrated(m)) body.append(el("div", "warnstrip", `⚠ Top wallets hold ${pct(concentration(m))} of supply. Large holders selling can move the price sharply` + (nl ? "." : " (may include team, treasury or exchange wallets).")));
-
+  const t = S.tokens.find((x) => x.metrics.address === selected);
+  if (!t) { body.append(el("div", "placeholder", T.panel.select)); return; }
+  const m = t.metrics, r = res(t), head = el("div", "tok"), info = el("div"); info.style.minWidth = "0";
+  const nm = el("div", "nm", m.symbol || "?"); nm.append(el("span", "chain", "SOL"));
+  info.append(nm, el("div", "ds", [m.name, m.age_d == null ? null : fill(T.panel.age, { d: num(m.age_d) })].filter(Boolean).join(" · ")));
+  head.append(coin(t, "av"), info); body.append(head);
+  const pr = el("div", "pricebig"), ch = m.price_change_24h_pct;
+  pr.append(el("span", "v", fmtPrice(m.price_usd)), el("span", "c " + tone(ch, 1), signed(ch, 1, "% 24h")), el("span", "t", fill(T.panel.as_of, { time: clock(t.ts) })));
+  body.append(pr);
+  const lc = el("div", "linkchips"); for (const k of ["website", "whitepaper", "docs", "x", "github"]) lc.append(linkChip(t, k)); body.append(lc);
   const links = el("div", "lrow");
-  if (typeof m.url === "string" && m.url.startsWith("https://dexscreener.com/")) { const a = el("a", "lb", "📈 Chart"); a.href = m.url; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a); }
-  if (ADDR.test(m.address)) { const a = el("a", "lb", "🛡 RugCheck"); a.href = "https://rugcheck.xyz/tokens/" + m.address; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a);
-    const c = el("button", "lb", "⧉ Copy CA"); c.title = "Copy contract address: " + m.address;
-    c.onclick = async () => { try { await navigator.clipboard.writeText(m.address); c.textContent = "✓ Copied"; } catch { c.textContent = "Copy failed"; } setTimeout(() => (c.textContent = "⧉ Copy CA"), 1200); };
-    links.append(c); }
+  if (ADDR.test(m.address)) {
+    const a = el("a", "lb", "📈 " + T.panel.chart_link); a.href = "https://dexscreener.com/solana/" + m.address; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a);
+    const x = el("a", "lb", "🔎 " + T.panel.explorer_link); x.href = "https://solscan.io/token/" + m.address; x.target = "_blank"; x.rel = "noopener noreferrer"; links.append(x);
+    const c = el("button", "lb", "⧉ " + T.panel.copy); c.title = m.address;
+    c.onclick = async () => { try { await navigator.clipboard.writeText(m.address); c.textContent = "✓ " + T.panel.copied; } catch { c.textContent = "–"; } setTimeout(() => (c.textContent = "⧉ " + T.panel.copy), 1200); };
+    links.append(c);
+  }
   body.append(links);
-
-  const g = el("div", "grid");
-  if (nl) g.append(box("Liquidity", usd(m.liquidity_usd), EXPLAIN.liquidity), box("Mkt cap", usd(m.market_cap_usd), EXPLAIN.mcap), box("Volume 24h", usd(m.volume_h24_usd), EXPLAIN.volume),
-                   box("Trades 24h", compact(m.txns_h24), EXPLAIN.txns), box("Holders", compact(m.holders), EXPLAIN.holders),
-                   box("Holders / h", signed(m.holder_growth_per_h, 1), EXPLAIN.growth, tone(m.holder_growth_per_h, 1)));
-  else g.append(box("Mkt cap", usd(m.mcap_usd), EXPLAIN.mcap), box("FDV", usd(m.fdv_usd), EXPLAIN.fdv), box("Liquidity", usd(m.liquidity_usd), EXPLAIN.liquidity),
-                box("Volume 24h", usd(m.volume_h24_usd), EXPLAIN.volume), box("Holders", compact(m.holders), EXPLAIN.holders),
-                box("Holders 24h", signed(m.holder_change_24h_pct, 1, "%"), EXPLAIN.growth, tone(m.holder_change_24h_pct, 1)));
+  const h = t.holders, B = T.boxes, C = T.columns, g = el("div", "grid");
+  g.append(box(B.mcap, usd(m.mcap_usd), C.mcap.body), box(B.fdv, usd(m.fdv_usd), T.box_help.fdv), box(B.liquidity, usd(m.liquidity_usd), T.box_help.liquidity),
+           box(B.volume, usd(m.volume_h24_usd), T.box_help.volume), box(B.holders, compact(m.holders), C.holders.body),
+           box(B.top10, h && h.top10_excl_pct != null ? (h.complete ? "" : "≥") + pct(h.top10_excl_pct) : "–", C.top10.body));
   body.append(g);
-  const fb = el("div", "box flowbox"); fb.title = flowTip(m); fb.append(el("div", "l", "Bought / sold · 24h volume"));
-  if (flowShare(m) == null) fb.append(el("div", "v", "–"));
-  else { const p = flowShare(m), lg = el("div", "lgd"); fb.append(flowBar(m));
-    lg.append(el("span", "a", `${num(p)}% · ${usd(m.bought_usd_h24)}`), el("span", "b", `${usd(m.sold_usd_h24)} · ${num(100 - p)}%`));
-    fb.querySelector(".flow").append(lg); }
-  body.append(fb);
-
-  const checks = mergedChecks(r.checks || []), real = checks.filter((c) => !c.info);
-  const okN = real.filter((c) => c.ok === true).length;
+  const checks = r.checks || [], real = checks.filter((c) => !c.info), okN = real.filter((c) => c.ok === true).length;
   const sec = el("div", "checks " + r.status), ct = el("div", "ct");
-  ct.append(el("b", null, { pass: "✓ Why it passed", fail: "✕ Why it was filtered out", unknown: "? Decided on the next refresh" }[r.status]),
-            el("span", null, `${okN}/${real.length} checks` + (r.status !== r.saved ? (r.status === "pass" ? " · ▲ with your filters" : " · ▼ with your filters") : "")));
+  ct.append(el("b", null, (t.member && !isEdited()) || (isEdited() && r.status === "pass") ? "✓ " + T.panel.covered : (r.status === "unknown" ? "? " : "✕ ") + T.panel.outside),
+            el("span", null, fill(T.panel.checks_count, { ok: okN, n: real.length })));
   sec.append(ct);
   for (const c of checks) {
-    const row = el("div", "ck" + (c.ok === false && !c.info ? " bad" : ""));
-    const ic = c.info ? ["•", "inf"] : c.ok === true ? ["✓", "ok"] : c.ok === false ? ["✕", "bad"] : ["?", "unk"];
+    const row = el("div", "ck" + (c.info ? " inf" : c.ok === false ? " bad" : ""));
+    const ic = c.info ? [c.ok ? "✓" : "•", "inf"] : c.ok === true ? ["✓", "ok"] : c.ok === false ? ["✕", "bad"] : ["?", "unk"];
     const v = el("span", "val", c.value); if (c.limit) v.append(el("small", null, c.limit));
     row.append(el("span", "ic " + ic[1], ic[0]), el("span", "lb2", c.label), v);
-    row.title = (EXPLAIN[CHECK_EXPLAIN[c.id]] || "") + (c.info ? "\n(Shown for information — not a filter for this tier.)" : "");
+    if (c.info) row.title = T.panel.facts_note;
     sec.append(row);
   }
   body.append(sec);
-  const foot = el("div", "foot"), gl = el("button", "linkbtn", "ⓘ What do these numbers mean?"); gl.onclick = showGlossary;
-  foot.append(gl, el("span", null, "Not financial advice")); body.append(foot);
+  const foot = el("div", "foot"), gl = el("button", "linkbtn", "ⓘ " + T.panel.glossary_link); gl.onclick = showGlossary;
+  foot.append(gl, el("span", null, T.disclaimer)); body.append(foot);
 }
 
-// ---- right panel: filters -------------------------------------------------------------
-function hintFor(f) {
-  const t = S.tiers[tier].typical[f.path], parts = [];
-  if (t) parts.push(`typical ${unitFmt[t.unit](t.p25)}–${unitFmt[t.unit](t.p75)}`);
-  return parts.join("");
+// ---- right panel: filters (visitor filters + admin coverage criteria) ---------------------------------------------
+function numField(label, value, onInput, help) {
+  const wrap = el("div", "field"), id = "f" + Math.random().toString(36).slice(2), input = el("input"), lab = el("label");
+  lab.htmlFor = id; lab.append(el("span", null, label)); if (help) { const q = el("span", "q", "?"); q.title = help; lab.append(q); }
+  input.id = id; input.type = "number"; input.min = "0"; input.step = "any"; input.value = value ?? ""; input.oninput = () => onInput(input.value === "" ? null : Number(input.value));
+  wrap.append(lab, input); return wrap;
 }
-function isAdvanced(f) { return f.label.startsWith("Post:") || /scope_min_mcap_usd|leave_after_hours/.test(f.path); }
-function activePreset() {
-  const pr = S.tiers[tier].presets;
-  return Object.keys(pr).find((name) => Object.entries(pr[name]).every(([p, v]) => String(edited[tier][p]) === String(v))) || null;
+function boolField(label, value, onChange, wide = false) {
+  const wrap = el("div", "field bool" + (wide ? " wide" : "")), id = "f" + Math.random().toString(36).slice(2), input = el("input"), lab = el("label", null, label);
+  input.type = "checkbox"; input.id = id; input.checked = !!value; input.onchange = () => onChange(input.checked); lab.htmlFor = id;
+  wrap.append(input, lab); return wrap;
 }
+function filtersChanged() { page = 0; if (route.name === "tokens") renderTokensView(); if (rightTab === "filters") renderRight(); }
 function renderFilters(body) {
-  const t = S.tiers[tier], isPublic = S.mode === "public";
-  const pre = el("div", "presets"), act = activePreset();
-  for (const name of ["strict", "balanced", "loose"]) if (t.presets[name]) {
-    const b = el("button", name === act ? "on" : "", name[0].toUpperCase() + name.slice(1)); b.title = PRESET_TEXT[name];
-    b.onclick = () => { Object.assign(edited[tier], t.presets[name]); renderRight(); changed(); }; pre.append(b);
+  const ft = T.filters, fields = el("div", "fields");
+  body.append(el("div", "pdesc", ft.intro));
+  fields.append(numField(ft.max_top10, F.maxTop10, (v) => { F.maxTop10 = v; filtersChangedSoft(); }, T.columns.top10.body),
+                numField(ft.min_holders, F.minHolders, (v) => { F.minHolders = v; filtersChangedSoft(); }),
+                numField(ft.min_mcap, F.minMcap, (v) => { F.minMcap = v; filtersChangedSoft(); }), el("div"));
+  for (const [k, l] of [["website", ft.has_website], ["whitepaper", ft.has_whitepaper], ["docs", ft.has_docs], ["github", ft.has_github], ["x", ft.has_x]])
+    fields.append(boolField(l, F[k], (v) => { F[k] = v; filtersChangedSoft(); }));
+  body.append(fields);
+  const acts = el("div", "factions"), reset = el("button", null, ft.reset); reset.onclick = () => { F = { ...DEF }; filtersChanged(); renderRight(); }; acts.append(reset); body.append(acts);
+  if (S.mode !== "public") renderCriteria(body);
+}
+function filtersChangedSoft() { page = 0; if (route.name === "tokens") renderTokensView(); }  // keep input focus in the panel
+function renderCriteria(body) {
+  const ft = T.filters, fields = el("div", "fields");
+  fields.append(el("div", "group", ft.admin_title));
+  for (const f of S.fields) {
+    const changed = String(edited[f.path]) !== String(S.criteria[f.path]);
+    const w = f.kind === "bool" ? boolField(f.label, edited[f.path], (v) => { edited[f.path] = v; criteriaChanged(); }, true)
+                                : numField(f.label, edited[f.path], (v) => { edited[f.path] = v; criteriaChanged(); }, f.help);
+    if (changed) w.classList.add("changed"); w.dataset.path = f.path; fields.append(w);
   }
-  body.append(pre, el("div", "pdesc", act ? PRESET_TEXT[act] + " Presets are starting points until the track record shows what holds up." : "Custom values — pick a preset to start over."));
-
-  const fields = el("div", "fields");
-  const groups = [["Filters", (f) => f.kind !== "bool" && !isAdvanced(f)], ["Token controls", (f) => f.kind === "bool"],
-                  ["Advanced", (f) => isAdvanced(f)]];
-  for (const [g, test] of groups) {
-    const list = t.fields.filter(test); if (!list.length) continue;
-    if (g === "Advanced") {
-      if (isPublic) continue;
-      const h = el("div", "group toggle", (showAdvanced ? "▾ " : "▸ ") + "Advanced · daily post selection, grace periods");
-      h.onclick = () => { showAdvanced = !showAdvanced; renderRight(); }; fields.append(h); if (!showAdvanced) continue;
-    } else fields.append(el("div", "group", g));
-    for (const f of list) fields.append(fieldEl(f));
-  }
-  const acts = el("div", "factions"), reset = el("button", null, isPublic ? "Back to default" : "Reset");
-  reset.onclick = () => { edited[tier] = { ...t.values }; renderRight(); changed(); };
-  acts.append(reset);
-  if (!isPublic) { const save = el("button", "save", "Save to config"); acts.append(save);
-    save.onclick = async () => { try { const j = await api("/api/config", { tier, values: edited[tier] }); t.values = j.values; edited[tier] = { ...j.values };
-        renderRight(); setMsg("Saved — used from the next refresh.", "ok"); evaluate(); } catch (e) { setMsg(e.message, "err"); } }; }
-  const msg = el("div", "fmsg"); msg.id = "fmsg";
-  body.append(fields, acts, msg); setMsg(""); markChanged();
+  body.append(fields);
+  const n = S.tokens.filter(covered).length, m = S.members;
+  const msg = el("div", "fmsg"); msg.id = "fmsg"; msg.textContent = isEdited() ? fill(ft.admin_covers, { n, m }) : ft.admin_intro;
+  const acts = el("div", "factions"), reset = el("button", null, ft.reset_criteria), save = el("button", "save", ft.save);
+  reset.onclick = () => { edited = { ...S.criteria }; whatIf = null; renderAll(); };
+  save.onclick = async () => { try { const j = await api("/api/config", { tier: "coverage", values: edited });
+      S.criteria = j.values; edited = { ...j.values }; msg.className = "fmsg ok"; msg.textContent = T.filters.saved; } catch (e) { msg.className = "fmsg err"; msg.textContent = e.message; } };
+  acts.append(reset, save); body.append(acts, msg);
 }
-function fieldEl(f) {
-  const cur = edited[tier][f.path], wrap = el("div", "field" + (f.kind === "bool" ? " bool" : "")); wrap.dataset.path = f.path;
-  const id = "f_" + f.path.replaceAll(".", "_"), input = el("input"); input.id = id;
-  const lab = el("label"); lab.htmlFor = id; lab.append(el("span", null, f.label.replace(/^Post: /, "")));
-  if (f.help) { const q = el("span", "q", "?"); q.title = f.help; lab.append(q); }
-  const hint = el("div", "hint"); hint.dataset.path = f.path;
-  if (f.kind === "bool") { input.type = "checkbox"; input.checked = !!cur; input.onchange = () => { edited[tier][f.path] = input.checked; changed(); }; wrap.append(input, lab, hint); }
-  else { input.type = f.kind === "num_or_null" ? "text" : "number"; input.min = "0"; input.step = "any"; input.value = cur === null ? "" : cur;
-    if (f.kind === "num_or_null") input.placeholder = "no limit";
-    input.oninput = () => { edited[tier][f.path] = input.value === "" ? null : input.value; changed(); }; wrap.append(lab, input, hint); }
-  fillHint(hint, f); return wrap;
+function criteriaChanged() {
+  document.querySelectorAll(".field[data-path]").forEach((w) => w.classList.toggle("changed", String(edited[w.dataset.path]) !== String(S.criteria[w.dataset.path])));
+  clearTimeout(evalTimer); evalTimer = setTimeout(evaluate, 250);
 }
-function fillHint(hint, f) {
-  hint.replaceChildren(); const h = hintFor(f), rm = impact[f.path];
-  if (h) hint.append(h); if (rm !== undefined) { if (h) hint.append(" · "); hint.append(el("span", rm ? "rm" : "rm0", rm ? `removes ${rm}` : "removes 0")); }
-  hint.title = "Typical = middle half of the tokens checked in the last refresh. Removes = tokens that fail this filter.";
+async function evaluate() {
+  if (!isEdited()) { whatIf = null; renderTokensIfShown(); updateCoversMsg(); return; }
+  try { const j = await api("/api/evaluate", { tier: "coverage", values: edited }); whatIf = j.results; impact = j.impact || {}; renderTokensIfShown(); updateCoversMsg(); }
+  catch (e) { const m = $("fmsg"); if (m) { m.className = "fmsg err"; m.textContent = e.message; } }
 }
-function refreshHints() { const fs = S.tiers[tier].fields; document.querySelectorAll(".field .hint").forEach((h) => { const f = fs.find((x) => x.path === h.dataset.path); if (f) fillHint(h, f); }); }
-function markChanged() { document.querySelectorAll(".field").forEach((w) => { const p = w.dataset.path; w.classList.toggle("changed", String(edited[tier][p]) !== String(S.tiers[tier].values[p])); });
-  const act = activePreset(); document.querySelectorAll(".presets button").forEach((b) => b.classList.toggle("on", b.textContent.toLowerCase() === act)); }
-function changed() { markChanged(); setMsg(""); page = 0; clearTimeout(evalTimer); evalTimer = setTimeout(evaluate, 250); }
-function setMsg(text, cls = "") { const m = $("fmsg"); if (!m) return; m.className = "fmsg " + cls;
-  m.textContent = text || (S.mode === "public" ? "Try your own filters — the table updates instantly." : "Edits preview instantly · Save applies them from the next refresh."); }
+function updateCoversMsg() { const m = $("fmsg"); if (!m) return; m.className = "fmsg";
+  m.textContent = isEdited() ? fill(T.filters.admin_covers, { n: S.tokens.filter(covered).length, m: S.members }) : T.filters.admin_intro; }
+function renderTokensIfShown() { if (route.name === "tokens") renderTable(); }
 
 function renderRight() {
   $("tabToken").classList.toggle("on", rightTab === "token"); $("tabFilters").classList.toggle("on", rightTab === "filters");
+  $("tabToken").setAttribute("aria-selected", rightTab === "token"); $("tabFilters").setAttribute("aria-selected", rightTab === "filters");
   const body = $("rbody"); body.replaceChildren();
-  if (rightTab === "filters") renderFilters(body); else if (results) renderToken(body); else body.append(el("div", "placeholder", "Evaluating…"));
+  if (rightTab === "filters") renderFilters(body); else renderToken(body);
 }
 $("tabToken").onclick = () => { rightTab = "token"; renderRight(); };
 $("tabFilters").onclick = () => { rightTab = "filters"; renderRight(); };
 
 function renderRun() {
-  if (S.mode === "public") return;
-  const r = S.run; $("runBtn").disabled = r.running; $("runTxt").textContent = r.running ? "Refreshing…" : "Refresh " + S.tiers[tier].label;
+  if (S.mode === "public" || !S.run) return;
+  const r = S.run; $("runBtn").disabled = r.running; $("runTxt").textContent = r.running ? "Refreshing…" : "Refresh";
   const st = $("runStatus"); st.className = "runstat " + (r.running ? "busy" : r.exit_code === 0 ? "ok" : r.exit_code ? "err" : "");
   st.textContent = r.running ? "● refreshing" : r.exit_code === 0 ? "● last refresh ok" : r.exit_code ? "● last refresh failed" : "idle"; st.title = r.tail || "";
 }
-function renderAll() { renderNav(); renderHead(); renderTf(); renderTable(); renderRight(); renderRun(); }
-
-// ---- actions --------------------------------------------------------------------------
-async function evaluate() {
-  const forTier = tier;
-  try { const j = await api("/api/evaluate", { tier: forTier, values: edited[forTier] }); if (forTier !== tier) return;
-    results = j.results; impact = j.impact || {}; applyPending(); renderHead(); renderTable();
-    if (rightTab === "token") renderRight(); else { refreshHints(); markChanged(); } }
-  catch (e) { setMsg(e.message, "err"); }
+function renderAll() {
+  $("app").classList.toggle("wide", route.name === "methodology");
+  renderNav();
+  if (route.name === "methodology") renderMethodology(); else { renderTokensView(); renderRight(); }
+  renderRun();
 }
-$("search").oninput = () => { page = 0; renderTable(); };
-$("runBtn").onclick = async () => { try { const j = await api("/api/run", { tiers: [tier] }); S.run = j.run; renderRun(); pollRun(); } catch (e) { $("runStatus").textContent = e.message; } };
-async function pollRun() { S.run = await api("/api/run"); renderRun(); if (S.run.running) setTimeout(pollRun, 3000); else load(); }
-new ResizeObserver(() => { if (S && results) renderTable(); }).observe($("twrap"));
+
+// ---- actions ---------------------------------------------------------------------------------------------
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeModal(); hideTip(); } });
+$("runBtn").onclick = async () => { try { const j = await api("/api/run", { tiers: ["coverage"] }); S.run = j.run; renderRun(); pollRun(); } catch (e) { $("runStatus").textContent = e.message; } };
+async function pollRun() { S.run = await api("/api/run"); renderRun(); if (S.run && S.run.running) setTimeout(pollRun, 3000); else load(); }
 
 async function load() {
-  S = await api("/api/state");
-  if (!S.mode) {  // page is newer than the running server: say so instead of breaking silently
-    document.body.prepend(el("div", "fmsg err", "The dashboard server is running old code — stop it (Ctrl+C) and start it again with: python sieve.py web"));
-    S.mode = "admin"; S.warn_pct = S.warn_pct ?? 50; S.disclaimer = S.disclaimer || "";
-    for (const t of Object.values(S.tiers)) { t.presets = t.presets || {}; t.typical = t.typical || {}; }
+  const next = await api("/api/state");
+  if (!next.texts) {  // page is newer than the running server: say so instead of breaking silently
+    document.body.prepend(el("div", "fmsg err", "The dashboard server is running old code — stop it (Ctrl+C) and start it again with: python sieve.py web")); return;
   }
+  S = next; T = S.texts;
   document.body.classList.toggle("public", S.mode === "public");
-  for (const [k, t] of Object.entries(S.tiers)) if (!edited[k]) edited[k] = { ...t.values };
-  results = null; renderAll(); evaluate(); if (S.run.running) pollRun();
+  if (S.mode !== "public" && (!edited || !isEdited())) { edited = { ...S.criteria }; whatIf = null; }
+  renderAll(); renderMarket();
+  if (S.run && S.run.running) pollRun();
 }
+parseRoute();
 load().catch((e) => { document.body.prepend(el("div", "fmsg err", "Failed to load: " + e.message)); });
 loadMarket();
+setInterval(() => { if (!document.hidden && route.name === "tokens" && !isEdited() && !document.activeElement.closest(".rbody")) load().catch(() => {}); }, 120000);
 </script>
 </body>
 </html>

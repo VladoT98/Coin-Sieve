@@ -31,6 +31,7 @@ A Solana token screener product, aiming for revenue:
 - Dry-run mode by default: print to console, only post to Telegram when --post is passed. Post to the TEST channel until the user approves switching to the main channel.
 
 ## Commands
+- **v3 (pivot in progress, Stage B):** `python sieve.py run` now defaults to `--tiers coverage` (the one "Tokens" list, criteria in config `coverage:`; other tiers only when named). `python sieve.py profiles [--max N]` (links, Solana-native check via CoinGecko, supply, logo cache; daily, ~1 min/token because of CoinGecko spacing) and `python sieve.py holders [--force]` (RugCheck top 20 + Solana RPC owner programs; daily). Order on a fresh DB: `run` → `profiles` + `holders` → `run`. The website reads only from the DB/logo cache (market strip thread is the exception until Stage E). All site texts live in `coinsieve/site_text.yaml`. Lines below describe the v2 screener and are rewritten in Stage G.
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).
 - `python sieve.py telegram-check` — one test line to the TEST chat.
@@ -93,6 +94,16 @@ A Solana token screener product, aiming for revenue:
 - Measured limit: 429 after 6 calls 2.5 s apart; still 429 after 20 s, OK after 60 s → ≈ 8 calls/min. Hours without trades have no candle; small New Launch pools can return 0 candles.
 - Token-level OHLCV (`networks/solana/tokens/{addr}/ohlcv/...`) → 401 (needs a paid key).
 - Alternative checked: CoinGecko keyless `coins/solana/contract/{addr}/market_chart?days=7` → 168 hourly aggregated prices, but 429 after 5 calls and only CoinGecko-listed tokens. Not used (a free demo key, 30/min, could be a later upgrade for Established).
+
+## Verified API facts (v3 coverage probes, 2026-10-09) — plan: `~/.claude/plans/hidden-floating-karp.md`
+- Jupiter token object also has `website`, `twitter`, `circSupply`, `totalSupply`, `usdPrice`, `stats24h.priceChange` (website on only 18/42 coverage candidates). `audit.topHoldersPercentage` definition is undocumented (JUP 15.5% vs raw top-10 66%) → not used for "Top 10".
+- CoinGecko keyless `coins/solana/contract/{mint}`: `id`, `asset_platform_id` (`solana` when native; GEOD `polygon-pos`, SPX `ethereum`), `categories` (`Bridged-Tokens` on ETH-wormhole and SPX), `links.homepage[]`, `links.whitepaper` (often "", sometimes dead or a docs site/homepage), `links.repos_url.github[]`, `links.twitter_screen_name`, `market_data.{circulating,total,max}_supply`. Unknown contract → 404. Rate limit: 22/41 calls got 429 at 7 s spacing → 20 s spacing + 60 s backoff.
+- DexScreener `tokens/v1` `info`: `websites[{url, label}]`, `socials[{url, type}]` (twitter/telegram/discord), `imageUrl`.
+- Homepages: often JS-only (raydium.io, kamino.finance have no links in HTML); pump.fun `/docs/*` are mostly legal pages (filtered).
+- RugCheck `knownAccounts` types seen: only `AMM`, `LOCKER` (no exchange labels). `topHolders` = 20 token accounts (owner, pct of supply).
+- Solana public RPC `getMultipleAccounts` (`dataSlice` length 0): `value[i]` null or `{owner (program), executable, space}`; headers `x-ratelimit-tier: free`, method limit 50. Holder owners controlled by a non-System program = contracts (JUP: Jupiter Lock, a voting-escrow program).
+- Unlocks: DefiLlama `api.llama.fi/emissions*` → HTTP 402 (paid). Public files `defillama-datasets.llama.fi/emissions/{protocol}` → free: `metadata.events` (cliff + linear with `rateDurationDays`), `metadata.unlockEvents`, `documentedData.tokenAllocation`, `metadata.notes`, `metadata.token` (`coingecko:<id>` or `solana:<mint>`), per-file `Last-Modified`; list in `emissionsProtocolsList` (~14 of our candidates). User decision 2026-10-09: admin-only until DefiLlama's terms are cleared.
+- Binance spot `api/v3/ticker/24hr?symbols=["BTCUSDT","ETHUSDT","SOLUSDT"]` → `lastPrice`, `priceChangePercent`, weight 2/6000 per min (Stage E strip).
 
 ## Telegram (Stage 3)
 - Error shape verified: `{"ok": false, "error_code": 401, "description": "Unauthorized"}`. Success verified 2026-10-08: `result.message_id` (bot @coinsieve_bot → private TEST channel "CS Test").

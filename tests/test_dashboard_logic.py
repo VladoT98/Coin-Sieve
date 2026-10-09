@@ -63,21 +63,21 @@ class WordingTest(unittest.TestCase):
                 self.assertNotIn(word, low)
             self.assertIsNone(re.search(r"\bbuy", low))
 
-    def test_new_column_texts_are_covered(self):
-        """The bought/sold and price-chart texts exist (so the scan above covers them) and stay neutral."""
+    def test_every_column_has_a_tooltip_text(self):
+        """Each table column in the page has title + plain explanation + a Methodology anchor in site_text.yaml."""
         import re
         from pathlib import Path
+        from coinsieve import site_text
         html = Path(__file__).parents[1].joinpath("coinsieve", "dashboard.html").read_text(encoding="utf-8")
-        for needle in ('label: "Bought / sold"', "flow: \"Share of the last 24 hours' trading volume",
-                       'chart: "Hourly closing prices', '" Price"'):
-            self.assertIn(needle, html)
-        texts = re.findall(r'^\s+(?:flow|chart): "([^"]+)"', html, re.M)
-        self.assertEqual(len(texts), 2)
-        for text in texts:
-            low = text.lower()
-            for word in ("safe", "gem", "verified", "sentiment", "bullish", "bearish", "signal", "recommend"):
-                self.assertNotIn(word, low)
-            self.assertIsNone(re.search(r"\bbuy", low))
+        keys = re.findall(r'^  \{ key: "(\w+)"', html, re.M)
+        texts = site_text.load()
+        anchors = {sec["id"] for sec in texts["methodology"]["sections"]}
+        self.assertGreaterEqual(len(keys), 9)
+        for k in keys:
+            col = texts["columns"][k]
+            self.assertTrue(col["title"] and col["body"], k)
+            self.assertIn(col["more"], anchors, k)
+            self.assertLessEqual(col["body"].count(". ") + 1, 3, f"{k}: keep tooltips to 1-3 sentences")
 
 
 CFG = {"age": {"min_hours": 6, "max_hours": 48},
@@ -153,16 +153,20 @@ if __name__ == "__main__":
 
 
 class LogoEndpointTest(unittest.TestCase):
-    def test_logo_url_only_comes_from_stored_metrics(self):
+    def test_logo_served_from_cache_only(self):
+        """The server never downloads: unknown address or uncached logo -> None; cached file -> its bytes."""
+        import tempfile
+        from pathlib import Path
         from unittest import mock
+        from coinsieve import logos
         from coinsieve.dashboard import App
-        app = App.__new__(App)  # skip config/db loading
-        app.icons, app.bad_icons, app.logo_dir = {}, {}, "unused"
-        with mock.patch("coinsieve.logos.logo_png") as fetch:
-            self.assertIsNone(app.logo("UnknownAddr1111111111111111111111111"))
-            fetch.assert_not_called()  # unknown address -> nothing fetched
-            app.icons["A"] = "https://example.com/x.png"
-            fetch.return_value = None
-            self.assertIsNone(app.logo("A"))
-            self.assertIsNone(app.logo("A"))
-            fetch.assert_called_once()  # failed logos are not retried
+        with tempfile.TemporaryDirectory() as d:
+            app = App.__new__(App)  # skip config/db loading
+            app.icons, app.logo_dir = {}, Path(d)
+            with mock.patch("requests.get") as get:
+                self.assertIsNone(app.logo("UnknownAddr1111111111111111111111111"))
+                app.icons["A"] = "https://example.com/x.png"
+                self.assertIsNone(app.logo("A"))  # not cached yet -> nothing fetched
+                logos._cache_path("https://example.com/x.png", d).write_bytes(b"png")
+                self.assertEqual(app.logo("A"), b"png")
+                get.assert_not_called()

@@ -3,6 +3,37 @@
 
 chain: solana
 
+# ---- v3 coverage list: the established tokens profiled on the website ("Tokens") ----
+# Jupiter universe (lists under `jupiter:`), same exclusions (jupiter.exclude_tags / exclude_mints).
+coverage:
+  leave_after_hours: 48            # a covered token must miss a criterion this long before it leaves the list
+  min_age_days: 365                # Jupiter firstPool.createdAt
+  scope_min_mcap_usd: 10000000     # below this, tokens are only counted (not evaluated or logged)
+  min_mcap_usd: 20000000
+  min_liquidity_usd: 500000
+  require_native_chain: true       # CoinGecko asset_platform_id == native_platform and no excluded category
+  native_platform: solana
+  exclude_cg_categories: [Bridged-Tokens, Wrapped-Tokens]   # "Bridged-Tokens" seen on ETH (Wormhole) and SPX
+  require_website_or_docs: true    # from the profiles job (website / whitepaper / docs link found)
+  holder_snapshot_hours: 6         # Jupiter holder count stored at most this often (holder history)
+  stale_after_minutes: 120         # the list is marked stale when the last refresh is older
+
+profiles:                          # `python sieve.py profiles` — links, native check, supply, logos
+  refresh_hours: 24
+  max_per_run: 60                  # CoinGecko lookups are ~20 s apart -> ~20 min for 60 tokens
+  max_candidates: 8                # whitepaper/docs URLs checked per token
+  fetch_timeout_s: 10              # per page (homepages, docs, whitepapers)
+  max_html_bytes: 2000000
+  max_pdf_probe_bytes: 65536       # enough to recognise a PDF; full download happens for AI summaries only
+
+holders:                           # `python sieve.py holders` — RugCheck top 20 + owner programs (Solana RPC)
+  refresh_hours: 24
+  exclude_kinds: [pool, locker, contract, exchange]   # left out of "Top 10 holders (excl.)"
+  # Exchange wallets: owner address -> {name, source}. Add only with a public source per address. Empty = none identified.
+  exchange_wallets: {}
+  # Owner programs with a known name: program id -> label. Others show as "Program-controlled account".
+  program_labels: {}
+
 # Tier membership. Sections below (discovery..posting) configure the New Launches pipeline.
 tiers:
   new_launches:
@@ -155,6 +186,9 @@ publishing:                       # Telegram digests (and later the website)
   max_symbol_len: 12
   max_name_len: 32
   banned_words: [safe, gem, verified, buy]   # never in our wording; a token NAME containing one is skipped
+  # Never in our own prose (site texts, AI summaries) — judgement words. Not applied to token names.
+  banned_phrases: [healthy, good tokenomics, strong, undervalued, bullish, bearish, recommended, we recommend,
+                   risk/reward, low risk, high risk, risk-free, guaranteed, to the moon]
   # Names containing these are never published (substring, case-insensitive). Edit freely —
   # avoid short words that sit inside innocent ones (e.g. "rape" in "grape", "cum" in "document").
   blocked_words: [fuck, shit, pussy, cunt, nigg, fagg, porn, penis, vagina, boob, buttock, hitler, nazi]
@@ -174,6 +208,11 @@ api:
   geckoterminal_base: https://api.geckoterminal.com/api/v2
   geckoterminal_min_interval_s: 7.0  # 429s seen after ~6 calls at 2.1 s spacing
   geckoterminal_backoff_s: 20        # after a 429: wait 20 s, then 40 s
+  coingecko_base: https://api.coingecko.com/api/v3
+  coingecko_min_interval_s: 20       # keyless: 22 of 41 calls got 429 at 7 s spacing (2026-10-09)
+  coingecko_backoff_s: 60            # after a 429: wait 60 s, then 120 s
+  solana_rpc_url: https://api.mainnet-beta.solana.com
+  solana_rpc_min_interval_s: 0.5
 
 market:                       # dashboard top strip; fetched by the dashboard server, cached in SQLite
   refresh_minutes: 10
@@ -189,14 +228,16 @@ market:                       # dashboard top strip; fetched by the dashboard se
 
 charts:                       # dashboard price sparklines (GeckoTerminal hourly OHLCV, cached in SQLite)
   history_hours:              # window shown per tier ("48h Price" / "7d Price")
+    coverage: 168
     new_launches: 48
     emerging: 168
     established: 168
   refresh_minutes:            # a token's series is re-fetched at most this often
+    coverage: 120
     new_launches: 30
     emerging: 120
     established: 240
-  tier_order: [new_launches, emerging, established]   # fetch priority between tiers
+  tier_order: [coverage]      # tiers whose tokens get charts, in priority order (the site shows coverage only)
   max_calls_per_run: 40       # OHLCV calls at the end of each `run` (~7 s apart -> ~5 min)
   include_failing: false      # failing tokens are fetched only after they were viewed on the dashboard
   demand_window_minutes: 30   # rows shown on the dashboard this recently are fetched first

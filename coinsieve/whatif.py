@@ -6,6 +6,7 @@ Editable fields are declared here — the dashboard renders them from FIELDS.
 """
 import copy
 
+from coinsieve import coverage
 from coinsieve.config_edit import get_path, set_path
 from coinsieve.filters import evaluate as hard_evaluate
 from coinsieve.tiers.jupiter_tiers import evaluate as jup_evaluate
@@ -52,7 +53,19 @@ def _jup(tier):
     ]
 
 
-FIELDS = {"new_launches": _NL, "emerging": _jup("emerging"), "established": _jup("established")}
+_COVERAGE = [
+    ("coverage.min_age_days", "Min age (days)", "num", "Jupiter: first trading pool."),
+    ("coverage.min_mcap_usd", "Min market cap ($)", "num", ""),
+    ("coverage.min_liquidity_usd", "Min liquidity ($)", "num", ""),
+    ("coverage.require_native_chain", "Require issued on Solana (CoinGecko)", "bool", ""),
+    ("coverage.require_website_or_docs", "Require website or docs found", "bool", ""),
+    ("coverage.scope_min_mcap_usd", "Check from mcap ($)", "num",
+     "Tokens below this are not checked at all (applies from the next refresh)."),
+    ("coverage.leave_after_hours", "Grace before leaving (h)", "num", "A covered token must miss a criterion this long before it leaves."),
+]
+
+FIELDS = {"new_launches": _NL, "emerging": _jup("emerging"), "established": _jup("established"),
+          "coverage": _COVERAGE}
 
 # Stored reasons that don't depend on editable thresholds -> carried over as-is.
 _FIXED_NL = {"no_pair_data", "jupiter_incomplete", "jupiter_failed", "rugged", "mint_authority_active",
@@ -140,8 +153,12 @@ def evaluate_all(tier, tokens, cfg):
     out = {}
     for t in tokens:
         m = t["metrics"]
-        out[m["address"]] = (new_launch_status(m, t["reasons"], cfg) if tier == "new_launches"
-                             else jupiter_status(m, tier, cfg))
+        if tier == "coverage":
+            chks = coverage.checks(m, cfg)
+            out[m["address"]] = (coverage.status(chks), coverage.reasons(chks))
+        else:
+            out[m["address"]] = (new_launch_status(m, t["reasons"], cfg) if tier == "new_launches"
+                                 else jupiter_status(m, tier, cfg))
     return out
 
 
@@ -264,6 +281,8 @@ def checks_status(checks):
 
 def checklist(tier, token, cfg):
     m = token["metrics"]
+    if tier == "coverage":
+        return coverage.checks(m, cfg)
     return new_launch_checks(m, token["reasons"], cfg) if tier == "new_launches" else jupiter_checks(m, tier, cfg)
 
 
@@ -290,6 +309,9 @@ def _hints(tier):
                 "rugcheck.max_top10_holders_pct": ("rc_top10_holders_pct", "pct"),
                 "ranking.min_vol_liq_ratio": ("vol_liq_ratio", "x"), "ranking.max_vol_liq_ratio": ("vol_liq_ratio", "x"),
                 "ranking.min_holder_growth_per_hour": ("holder_growth_per_h", "n")}
+    if tier == "coverage":
+        return {"coverage.min_age_days": ("age_d", "d"), "coverage.min_mcap_usd": ("mcap_usd", "usd"),
+                "coverage.min_liquidity_usd": ("liquidity_usd", "usd"), "coverage.scope_min_mcap_usd": ("mcap_usd", "usd")}
     p = f"tiers.{tier}."
     return {p + "min_age_days": ("age_d", "d"), p + "max_age_days": ("age_d", "d"), p + "scope_min_mcap_usd": ("mcap_usd", "usd"),
             p + "min_mcap_usd": ("mcap_usd", "usd"), p + "max_mcap_usd": ("mcap_usd", "usd"),

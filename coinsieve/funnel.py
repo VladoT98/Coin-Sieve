@@ -21,6 +21,9 @@ REASON_LABELS = {
     "top_holders": "top wallets hold too much", "missing_liquidity_usd": "no liquidity data",
     "missing_mcap_usd": "no market cap data", "missing_holders": "no holder data",
     "missing_top_holders_pct": "no holder data", "missing_organic_score": "no trading-quality data",
+    # v3 coverage list
+    "too_young": "younger than the minimum age", "excluded_type": "stablecoin / staking / stock",
+    "not_native": "not issued on Solana", "no_website_or_docs": "no website or docs found",
 }
 
 

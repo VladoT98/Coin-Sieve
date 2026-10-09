@@ -1,0 +1,298 @@
+# Every text the website shows. One place, so the wording tests (tests/test_site_text.py) can check all of it.
+# Rules: neutral facts, plain language, no advice or predictions, no quality judgements.
+# Never use: safe, gem, verified, buy, healthy, good tokenomics, strong, undervalued, bullish, bearish,
+# risk/reward, recommended. Watch for words that contain them (e.g. "management" contains "gem").
+
+brand: Coin Sieve
+tagline: Established crypto tokens, explained in plain language.
+disclaimer: Not financial advice. Not a recommendation.
+
+nav:
+  tokens: Tokens
+  methodology: Methodology
+  glossary: How to read this
+
+# Column header tooltips: title, 1-3 plain sentences, "Learn more" anchor on the Methodology page.
+columns:
+  token:
+    short: Token
+    title: Token
+    body: The ticker and name the project uses, and the blockchain it is issued on. Anyone can copy a name, so the contract address is what identifies a token.
+    more: coverage
+  price:
+    short: Price
+    title: Price
+    body: Last traded price in US dollars from Jupiter, Solana's largest trading aggregator, at the time shown. It updates when the list is refreshed, not live.
+    more: prices
+  mcap:
+    short: MCap
+    title: Market cap
+    body: Price × tokens in circulation. A rough measure of the token's size today; tokens that are still locked or not yet released are not included.
+    more: prices
+  change_24h:
+    short: 24h
+    title: 24h change
+    body: Price change over the last 24 hours, from Jupiter. It describes the past day only.
+    more: prices
+  chart_7d:
+    short: 7d
+    title: 7d price
+    body: Hourly closing prices over the last 7 days from the token's largest trading pool (GeckoTerminal). The % compares the first and last point of this same line.
+    more: prices
+  top10:
+    short: Top 10
+    title: Top 10 holders
+    body: Share of all tokens held by the 10 largest wallets, after leaving out wallets we can identify as trading pools, smart contracts (locks, staking) or listed exchanges. Team and treasury wallets we cannot identify stay in. "≥" means the data held fewer than 10 such wallets, so the real share is at least this.
+    more: holders
+  holders:
+    short: Holders
+    title: Holders
+    body: Wallets holding a balance right now (Jupiter data, which matches the blockchain). One person can use many wallets, and one exchange wallet can stand for many people.
+    more: holders
+  unlock:
+    short: Unlock
+    title: Next unlock
+    body: The next scheduled release of locked tokens (for example team or investor allocations) into circulation. Unlock data is not yet available on this site.
+    more: unlocks
+  docs:
+    short: Docs
+    title: Docs
+    body: Whether a whitepaper or documentation site was found through the project's own links. ✓ means a link was found, not that its content was checked.
+    more: links
+
+table:
+  search: Search symbol, name, address
+  updated: Updated {ago} ago
+  never: Not updated yet
+  stale: data is older than expected
+  covered: covered tokens
+  outside: just outside coverage
+  empty: No tokens match these filters.
+  none_yet: No tokens are covered yet. The first profiles are still being fetched.
+  chart_stale: stale
+  loading: Loading…
+  no_unlock: not available
+  no_docs: none found
+  whitepaper: whitepaper
+  docs: docs
+  incomplete: fewer than 10 unidentified wallets in the data
+  view_covered: Covered
+  view_outside: Just outside
+  name_hidden: (name not shown)
+  as_of: Price as of {time}
+  top10_tip: "Top 10 without identified pools, contracts and exchanges: {excl}. All wallets: {all}. Left out: {out}."
+  no_holder_data: Holder data not fetched yet.
+  no_chart: No price history stored yet (fetched in the background, a few tokens per refresh).
+  chart_tip: "{n} hourly closes over {span}: {first} → {last}. Updated {ago} ago."
+
+filters:
+  intro: Filters only change what you see. Nothing is saved.
+  chip_top10: Top 10 < {n}%
+  chip_whitepaper: Has whitepaper
+  chip_unlock: Unlock in 30 days
+  unlock_unavailable: Unlock data not yet available.
+  max_top10: Max top 10 holders (%)
+  min_mcap: Min market cap ($)
+  min_holders: Min holders
+  has_website: Has website
+  has_whitepaper: Has whitepaper
+  has_docs: Has docs
+  has_github: Has GitHub
+  has_x: Has X account
+  reset: Reset filters
+  admin_title: Coverage criteria (admin)
+  admin_intro: Edits preview instantly. Save applies them from the next refresh.
+  admin_covers: With these values {n} tokens are covered (now {m}).
+  save: Save to config
+  saved: Saved. Used from the next refresh.
+  reset_criteria: Reset
+
+links:
+  website: Website
+  whitepaper: Whitepaper
+  docs: Docs
+  x: X
+  github: GitHub
+
+link_status:
+  ok: The link answered when checked.
+  blocked: Listed by the project; the site refuses automated checks.
+  error: Listed by the project; the last check did not answer.
+  dead: Listed, but the page no longer exists.
+  listed: Listed by the project; not opened by Coin Sieve.
+  none: Not found in the project's listings or on its homepage.
+
+sources_short:
+  jupiter: Jupiter
+  dexscreener: DexScreener
+  coingecko: CoinGecko
+  homepage: the project's homepage
+  homepage-domain: the project's own domain
+
+holder_kinds:
+  pool: Trading pool
+  locker: Token lock
+  contract: Contract
+  exchange: Exchange
+  wallet: Wallet
+
+checks:
+  age:
+    label: At least a year old
+  type:
+    label: Project token (not a stablecoin, staking or stock token)
+  mcap:
+    label: Market cap
+  liquidity:
+    label: Liquidity
+  native:
+    label: Issued on Solana (not bridged or wrapped)
+  links:
+    label: Website or docs found
+  mint:
+    label: Mint authority revoked
+  freeze:
+    label: Freeze authority revoked
+
+panel:
+  select: Select a token in the table
+  covered: Covered
+  outside: Not covered
+  criteria: Coverage criteria
+  checks_count: "{ok}/{n} criteria met"
+  facts_note: Shown for information. Not a coverage criterion.
+  copy: Copy address
+  copied: Copied
+  chart_link: Chart
+  explorer_link: Explorer
+  age: "{d} days old"
+  as_of: as of {time}
+  glossary_link: What do these numbers mean?
+  no_holders: Holder data not fetched yet
+  no_links: Links not checked yet
+
+box_help:
+  fdv: "Fully diluted value: price × every token that will ever exist, including ones not released yet."
+  liquidity: Money sitting in the token's trading pools, in US dollars. More liquidity means a trade moves the price less.
+  volume: Dollar value traded in the last 24 hours.
+
+tip:
+  more: Learn more →
+  sort: Sort ▲▼
+
+boxes:
+  mcap: Mkt cap
+  fdv: FDV
+  liquidity: Liquidity
+  volume: Volume 24h
+  holders: Holders
+  top10: Top 10
+
+glossary:
+  - heading: The list
+    items:
+      - [Covered, A token that meets every coverage criterion on the Methodology page. Being covered means the token is old and large enough to profile. It says nothing about whether it is worth holding.]
+      - [Just outside, Admin view only. Tokens that were checked but miss at least one criterion.]
+  - heading: Numbers
+    items:
+      - [Price, Last traded price in US dollars (Jupiter), at the time shown.]
+      - [Market cap, Price × tokens in circulation. A rough measure of the token's size.]
+      - [FDV, "Fully diluted value: price × every token that will ever exist, including ones not released yet."]
+      - [Liquidity, "Money sitting in the token's trading pools, in US dollars. More liquidity means a trade moves the price less."]
+      - [Volume 24h, Dollar value traded in the last 24 hours.]
+      - [Holders, Wallets that hold the token right now. One person can use many wallets.]
+      - [Top 10 holders, "Share of all tokens held by the 10 largest wallets, leaving out identified trading pools, contracts and exchanges."]
+      - [7d price, Hourly closing prices of the token's largest pool over 7 days. Hours without trades have no point.]
+  - heading: Facts
+    items:
+      - [Mint authority revoked, Nobody can create new tokens any more, so the supply cannot be increased by surprise.]
+      - [Freeze authority revoked, Nobody can freeze holders' wallets.]
+      - [Issued on Solana, "The token was created on Solana, not copied over from another blockchain by a bridge or wrapper."]
+      - [Whitepaper, A document in which the project describes itself and usually its token supply. Coin Sieve finds it through the project's own links.]
+
+market:
+  fng: "A third-party gauge of the overall crypto market's mood, from 0 (extreme fear) to 100 (extreme greed), built from price swings, momentum, social media and search trends. Updated once a day. It describes the mood — not where prices go next."
+  mktcap: Combined market value of all tracked cryptocurrencies, its change over 24 hours, and the dollar value traded in the last 24 hours.
+  oi: "Open interest: the dollar value of futures and perpetual contracts that are still open. Total = summed across about 100 derivatives exchanges. Solana = SOL perpetual contracts on the two largest venues for them."
+  dvol: "Dollar value of futures and perpetual contracts traded in the last 24 hours. Total = all derivatives exchanges summed. Solana = SOL perpetual contracts on the two largest venues for them."
+
+methodology:
+  title: Methodology
+  intro: How Coin Sieve picks the tokens it covers, where every number comes from, and what it cannot tell you.
+  contents: On this page
+  criterion: Criterion
+  value: Value now
+  min_days: "{n} days or older"
+  or_more: "{v} or more"
+  required: Required
+  not_required: Not required
+  excluded: "Excluded: stablecoins, liquid staking and yield tokens, tokenised stocks and real-world assets (Jupiter tags {tags}), plus SOL itself, wrapped BTC and the JLP liquidity basket."
+  grace: Grace period before a token leaves the list
+  grace_value: "{n} hours"
+  source: Source
+  provides: Provides
+  cadence: Updated
+  last: Last fetched
+  never: not yet
+  ago: "{ago} ago"
+  sections:
+    - id: about
+      title: What Coin Sieve is
+      paras:
+        - Coin Sieve explains established crypto tokens in plain language, so you can understand what a token is, how its supply is split and who holds it in about two minutes.
+        - It describes; it never suggests what to do. Nothing here is a ranking, a rating or a prediction.
+    - id: coverage
+      title: Which tokens are covered
+      paras:
+        - A token is covered when it meets every criterion in the table below, using the values currently in force. Tokens are checked again on every refresh.
+        - A covered token that stops meeting a criterion stays on the list for a short grace period, so one unusual hour does not remove it. Being covered only means the token is old and large enough to profile.
+      table: coverage
+    - id: sources
+      title: Data sources
+      paras:
+        - Every number comes from one of these sources and is stored with the time it was fetched. The website only shows stored data; when data is older than expected, it is dimmed and marked.
+      table: sources
+    - id: prices
+      title: Prices and market data
+      paras:
+        - Price, 24h change, market cap, liquidity and volume come from Jupiter at the time of the last refresh. The 7-day line uses hourly closing prices from the token's largest trading pool (GeckoTerminal).
+        - Market cap counts only tokens in circulation. Tokens that are locked or not released yet are not included.
+    - id: holders
+      title: Holders and concentration
+      paras:
+        - The holder count comes from Jupiter and matches the blockchain. Concentration uses the 20 largest token accounts reported by RugCheck, grouped by owner wallet.
+        - "Wallets are left out of “Top 10 holders” when they can be identified: trading pools (RugCheck), token locks (RugCheck), accounts controlled by a program rather than a person (read from the blockchain), and exchange wallets from a hand-kept list with a source for every address."
+        - Wallets that cannot be identified stay in, including team, treasury and exchange wallets we do not know about. The share without any exclusions is shown next to it.
+    - id: links
+      title: Project links
+      paras:
+        - Website, whitepaper, docs, X and GitHub links are taken from the project's listings on Jupiter, DexScreener and CoinGecko, and from links on the project's own homepage. The only address Coin Sieve tries on its own is docs.<project domain>, and it counts only if a page answers.
+        - ✓ means a link was found. It does not mean the content was checked or is accurate.
+    - id: unlocks
+      title: Token unlocks
+      paras:
+        - Unlock schedules are not yet available on this site. No unlock dates are estimated or guessed.
+    - id: ai
+      title: AI summaries
+      paras:
+        - AI summaries are not published yet. When they are, each one will be generated only from the project's own whitepaper or docs, labelled with its source and date, and kept separate from on-chain numbers.
+    - id: limits
+      title: Known limits
+      paras:
+        - Data can be late, incomplete or wrong at the source. A token can lose most of its value quickly even when every fact on this page looks unremarkable.
+        - Coverage is Solana only for now. Names and logos come from the projects and are shown as listed.
+    - id: disclaimer
+      title: Disclaimer
+      paras:
+        - Coin Sieve is an information service. Nothing on this site is financial, investment, legal or tax advice, and nothing is an offer or a solicitation. Do your own research.
+
+# Data sources table on the Methodology page. `key` links to the "last fetched" time from the database.
+sources:
+  - {key: jupiter, name: Jupiter Tokens API, what: "Token list, price, market cap, liquidity, volume, holders, age, mint and freeze authority", cadence: Every refresh of the list}
+  - {key: dexscreener, name: DexScreener, what: "Project website and social links; pool address for charts", cadence: Daily}
+  - {key: coingecko, name: CoinGecko, what: "Issuing blockchain, categories, whitepaper and GitHub links, maximum supply", cadence: Daily}
+  - {key: homepage, name: Project homepages, what: Links to whitepapers and docs, cadence: Daily}
+  - {key: rugcheck, name: RugCheck, what: "20 largest token accounts, trading pool and lock labels", cadence: Daily}
+  - {key: solana_rpc, name: Solana blockchain (public RPC), what: Whether a large holder is controlled by a program, cadence: Daily}
+  - {key: geckoterminal, name: GeckoTerminal, what: Hourly prices for the 7-day line, cadence: Every few hours}
+  - {key: market, name: "alternative.me, CoinGecko, Binance, Bybit", what: Market strip at the top of the page, cadence: Every few minutes}

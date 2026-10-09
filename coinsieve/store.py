@@ -136,7 +136,30 @@ CREATE TABLE IF NOT EXISTS chart_demand (
     address TEXT PRIMARY KEY,
     ts      REAL NOT NULL
 );
+-- v3 coverage profiles (profiles.py): links found, CoinGecko platform/categories, supply, logo URL. JSON per token.
+CREATE TABLE IF NOT EXISTS token_profiles (
+    chain      TEXT NOT NULL,
+    address    TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    updated_at REAL NOT NULL,
+    PRIMARY KEY (chain, address)
+);
+-- Latest top-holder analysis per token (holders.py): RugCheck top 20 + owner programs from Solana RPC.
+CREATE TABLE IF NOT EXISTS holder_reports (
+    chain          TEXT NOT NULL,
+    address        TEXT NOT NULL,
+    ts             REAL NOT NULL,
+    data           TEXT NOT NULL,
+    top10_all_pct  REAL,
+    top10_excl_pct REAL,
+    PRIMARY KEY (chain, address)
+);
 """
+
+# Columns added after the first release. Non-destructive: old rows get the default.
+_ADDED_COLUMNS = [("snapshots", "source", "TEXT")] + [
+    (t, "chain", "TEXT NOT NULL DEFAULT 'solana'")
+    for t in ("tier_members", "tier_events", "latest_metrics", "snapshots", "chart_series", "outcomes")]
 
 # Stage 3 first draft keyed these tables without `chat`. Recreate only if empty.
 _PER_CHAT_TABLES = ("posts", "zero_notices")
@@ -149,9 +172,9 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self._migrate_per_chat()
         self.db.executescript(SCHEMA)
-        cols = [r["name"] for r in self.db.execute("PRAGMA table_info(snapshots)")]
-        if "source" not in cols:  # non-destructive: old rows keep NULL source
-            self.db.execute("ALTER TABLE snapshots ADD COLUMN source TEXT")
+        for table, col, decl in _ADDED_COLUMNS:
+            if col not in [r["name"] for r in self.db.execute(f"PRAGMA table_info({table})")]:
+                self.db.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
     def _migrate_per_chat(self):
         for table in _PER_CHAT_TABLES:
@@ -372,6 +395,39 @@ class Store:
         """[{ts, data}] oldest first."""
         return [{"ts": r[0], "data": json.loads(r[1])}
                 for r in self.db.execute("SELECT ts, data FROM market_snapshots WHERE ts >= ? ORDER BY ts", (since,))]
+
+    def last_snapshot_ts(self, address, source):
+        return self.db.execute("SELECT MAX(ts) FROM snapshots WHERE address = ? AND source = ?",
+                               (address, source)).fetchone()[0]
+
+    # --- v3 profiles / holders (keyed by chain + address) ---
+    def _by_address(self, table, chain, addresses):
+        addresses = list(addresses)
+        if not addresses:
+            return {}
+        q = ",".join("?" * len(addresses))
+        rows = self.db.execute(f"SELECT * FROM {table} WHERE chain = ? AND address IN ({q})", [chain, *addresses])
+        return {r["address"]: {**dict(r), "data": json.loads(r["data"])} for r in rows}
+
+    def profiles(self, chain, addresses):
+        """{address: {data, updated_at, ...}}"""
+        return self._by_address("token_profiles", chain, addresses)
+
+    def save_profile(self, chain, address, data, now):
+        self.db.execute("INSERT OR REPLACE INTO token_profiles (chain, address, data, updated_at) VALUES (?, ?, ?, ?)",
+                        (chain, address, json.dumps(data), now))
+
+    def holder_reports(self, chain, addresses):
+        return self._by_address("holder_reports", chain, addresses)
+
+    def save_holder_report(self, chain, address, data, now):
+        self.db.execute("INSERT OR REPLACE INTO holder_reports (chain, address, ts, data, top10_all_pct, top10_excl_pct) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (chain, address, now, json.dumps(data), data.get("top10_all_pct"), data.get("top10_excl_pct")))
+
+    def max_ts(self, table, column):
+        """Latest fetch time recorded in a table (for 'last updated' labels)."""
+        return self.db.execute(f"SELECT MAX({column}) FROM {table}").fetchone()[0]
 
     def commit(self):
         self.db.commit()

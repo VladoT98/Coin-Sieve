@@ -65,6 +65,13 @@ def jup_metrics(t, now):
         "tags": t.get("tags") or [],
         "icon": t.get("icon"),
         "url": f"https://dexscreener.com/solana/{t['id']}",
+        # v3 coverage list (verified 2026-10-09 on the JUP token object)
+        "price_usd": t.get("usdPrice"),
+        "price_change_24h_pct": s24.get("priceChange"),
+        "circ_supply": t.get("circSupply"),
+        "total_supply": t.get("totalSupply"),
+        "website": t.get("website"),
+        "twitter": t.get("twitter"),
     }
 
 
