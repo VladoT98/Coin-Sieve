@@ -220,7 +220,7 @@ class StaticExportTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(dashboard.App, "__init__", lambda self, *a, **k: None), \
                 mock.patch.object(dashboard.App, "state", lambda self: state), \
-                mock.patch.object(dashboard.App, "market_view", lambda self: ({"market": None}, None)):
+                mock.patch.object(dashboard.App, "market_view", lambda self: ({"market": None}, None)),                 mock.patch.object(dashboard.App, "token_detail", lambda self, a: {"address": a, "points": []}):
             dashboard.App.icons, dashboard.App.logo_dir = {}, Path(d)
             try:
                 self.assertEqual(dashboard.export("config.yaml", d), 1)
@@ -232,6 +232,8 @@ class StaticExportTest(unittest.TestCase):
             self.assertEqual(saved["mode"], "public")
             self.assertFalse(saved["tokens"][0]["logo"])   # no cached file -> no broken image link
             self.assertTrue(Path(d, ".nojekyll").exists())
+            detail = json.loads(Path(d, "api", "token", "A" * 43 + ".json").read_text(encoding="utf-8"))
+            self.assertEqual(detail["address"], "A" * 43)   # token page data next to the list
 
 
 if __name__ == "__main__":

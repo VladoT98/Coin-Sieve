@@ -3,6 +3,7 @@
 Usage:
     python sieve.py [run] [--tiers coverage,new_launches,emerging,established]   # evaluate (default: coverage)
     python sieve.py profiles [--max N]                                  # links, native check, supply, logos (daily)
+    python sieve.py history [--max-calls N]                             # token page charts (CoinGecko, budgeted)
     python sieve.py market                                              # refresh the market strip once
     python sieve.py export [--out site]                                 # static public site (GitHub Pages)
     python sieve.py holders [--force]                                   # top holders (RugCheck + Solana RPC, daily)
@@ -22,7 +23,7 @@ from pathlib import Path
 import yaml
 from dotenv import dotenv_values
 
-from coinsieve import card, charts, coverage, funnel, holders, logos, membership, profiles, track_record
+from coinsieve import card, charts, coverage, funnel, history, holders, logos, membership, profiles, track_record
 from coinsieve.coingecko import CoinGecko
 from coinsieve.dexscreener import DexScreener
 from coinsieve.digest import (TIER_LABEL, alerts_text, blocked_reason, card_stats, daily_caption, display_name,
@@ -149,6 +150,20 @@ def cmd_profiles(cfg, max_per_run=None):
     print(f"Profiles: {st['done']} updated of {st['due']} due, CoinGecko failed for {st['coingecko_failed']}"
           f" (old CoinGecko data kept), logos cached {st['logos']}. Run `python sieve.py run` to apply them.")
     store.close()
+
+
+def cmd_history(cfg, max_calls=None):
+    """Token page charts for covered tokens (CoinGecko, budgeted; cached series kept on failures)."""
+    api = cfg["api"]
+    store = Store(cfg["storage"]["db_path"])
+    try:
+        cg = CoinGecko(api["coingecko_base"], api["timeout_s"], api["coingecko_min_interval_s"], api["retries"],
+                       backoff_s=api["coingecko_backoff_s"])
+        st = history.fetch(store, cfg, cg, list(store.current_members("coverage")), time.time(), max_calls)
+        print(f"Price history: {st['fetched']} updated, {st['failed']} failed (of {st['planned']} due)"
+              + (" - stopped on CoinGecko rate limit, cached series kept" if st["rate_limited"] else ""))
+    finally:
+        store.close()
 
 
 def cmd_holders(cfg, force=False):
@@ -413,6 +428,8 @@ def main():
     sub.add_parser("track-record", help="print track-record stats per tier and checkpoint")
     p_ch = sub.add_parser("charts", help="refresh cached price sparklines now (also runs after every `run`)")
     p_ch.add_argument("--max-calls", type=int, default=None, help="GeckoTerminal calls (default: charts.max_calls_per_run)")
+    p_hist = sub.add_parser("history", help="token page charts: price / market cap / volume history (CoinGecko)")
+    p_hist.add_argument("--max-calls", type=int, default=None, help="CoinGecko calls (default: history.max_calls_per_run)")
     sub.add_parser("market", help="refresh the market strip once (scheduled job)")
     p_exp = sub.add_parser("export", help="write the static public site (GitHub Pages)")
     p_exp.add_argument("--out", default="site")
@@ -442,6 +459,8 @@ def main():
         return cmd_holders(cfg, args.force)
     if command == "charts":
         return cmd_charts(cfg, args.max_calls)
+    if command == "history":
+        return cmd_history(cfg, args.max_calls)
     if command == "market":
         from coinsieve.dashboard import refresh_market
         return refresh_market(args.config)

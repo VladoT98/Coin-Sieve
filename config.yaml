@@ -25,6 +25,20 @@ site:                              # website Tokens table (visitors' column choi
 unlocks:
   public: false                    # DefiLlama terms not cleared (user decision 2026-10-09): unlock column admin-only
 
+history:                           # token page chart: `python sieve.py history` (CoinGecko market_chart, keyless)
+  days: {"30d": 30, "365d": 365}   # 30d = hourly points (24h / 7d / 1M ranges), 365d = daily (1Y). Keyless max is 365.
+  refresh_hours: {"30d": 3, "365d": 24}
+  stale_after_hours: {"30d": 8, "365d": 48}   # older series are marked stale on the page
+  max_calls_per_run: 40            # ~20 s apart (api.coingecko_min_interval_s) -> ~13 min at most per run
+
+facts:                             # "Points to check" on the token page: shown only when the data crosses these
+  top10_pct: 50                    # 10 largest unidentified wallets hold at least this % of supply
+  contracts_pct: 20                # pools, locks and other contracts hold at least this %
+  circulating_below_pct: 50        # less than this % of max (or total) supply circulates
+  liquidity_below_pct_of_mcap: 0.5
+  holders_drop_pct: 5              # holder count fell at least this % ...
+  holders_drop_days: 7             # ... over this many days (needs that much history)
+
 profiles:                          # `python sieve.py profiles` — links, native check, supply, logos
   refresh_hours: 24
   max_per_run: 60                  # CoinGecko lookups are ~20 s apart -> ~20 min for 60 tokens

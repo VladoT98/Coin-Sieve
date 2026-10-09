@@ -154,6 +154,18 @@ CREATE TABLE IF NOT EXISTS holder_reports (
     top10_excl_pct REAL,
     PRIMARY KEY (chain, address)
 );
+-- Token page chart (history.py): CoinGecko market_chart per span. points = JSON [[ts, price, mcap, volume], ...]
+-- oldest first; a failed fetch only sets attempted_at/error and keeps the last good series.
+CREATE TABLE IF NOT EXISTS price_history (
+    chain        TEXT NOT NULL,
+    address      TEXT NOT NULL,
+    span         TEXT NOT NULL,                -- "30d" (hourly) | "365d" (daily)
+    points       TEXT,
+    fetched_at   REAL,
+    attempted_at REAL,
+    error        TEXT,
+    PRIMARY KEY (chain, address, span)
+);
 """
 
 # Columns added after the first release. Non-destructive: old rows get the default.
@@ -424,6 +436,34 @@ class Store:
         self.db.execute("INSERT OR REPLACE INTO holder_reports (chain, address, ts, data, top10_all_pct, top10_excl_pct) "
                         "VALUES (?, ?, ?, ?, ?, ?)",
                         (chain, address, now, json.dumps(data), data.get("top10_all_pct"), data.get("top10_excl_pct")))
+
+    def price_history(self, chain, address):
+        """{span: {points (list), fetched_at, attempted_at, error}} for one token."""
+        return {r["span"]: {"points": json.loads(r["points"]) if r["points"] else None, "fetched_at": r["fetched_at"],
+                            "attempted_at": r["attempted_at"], "error": r["error"]}
+                for r in self.db.execute("SELECT * FROM price_history WHERE chain = ? AND address = ?", (chain, address))}
+
+    def history_attempts(self, chain):
+        """{(address, span): attempted_at} for the fetch planner."""
+        return {(r[0], r[1]): r[2] for r in self.db.execute(
+            "SELECT address, span, attempted_at FROM price_history WHERE chain = ?", (chain,))}
+
+    def save_history(self, chain, address, span, points, now):
+        self.db.execute("INSERT INTO price_history (chain, address, span, points, fetched_at, attempted_at, error) "
+                        "VALUES (?, ?, ?, ?, ?, ?, NULL) ON CONFLICT(chain, address, span) DO UPDATE SET "
+                        "points = excluded.points, fetched_at = excluded.fetched_at, attempted_at = excluded.attempted_at, "
+                        "error = NULL", (chain, address, span, json.dumps(points), now, now))
+
+    def history_failed(self, chain, address, span, error, now):
+        self.db.execute("INSERT INTO price_history (chain, address, span, attempted_at, error) VALUES (?, ?, ?, ?, ?) "
+                        "ON CONFLICT(chain, address, span) DO UPDATE SET attempted_at = excluded.attempted_at, "
+                        "error = excluded.error", (chain, address, span, now, str(error)[:300]))
+
+    def holder_history(self, address, source="jupiter"):
+        """[[ts, holders], ...] oldest first."""
+        return [[r[0], r[1]] for r in self.db.execute(
+            "SELECT ts, holders FROM snapshots WHERE address = ? AND source = ? AND holders IS NOT NULL ORDER BY ts",
+            (address, source))]
 
     def max_ts(self, table, column):
         """Latest fetch time recorded in a table (for 'last updated' labels)."""

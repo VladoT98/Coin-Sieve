@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from coinsieve import charts, coverage, funnel, market, site_text, whatif
+from coinsieve import charts, coverage, facts, funnel, history, market, site_text, whatif
 from coinsieve.config_edit import write_values
 from coinsieve.digest import blocked_reason
 from coinsieve.sanitize import clean_text
@@ -124,12 +124,39 @@ class App:
                    "exclude_tags": cfg["jupiter"]["exclude_tags"], "sources": self.sources(store, ts),
                    "columns": {"max": cfg["site"]["columns_max"], "default": cfg["site"]["default_columns"]},
                    "unlocks_public": cfg["unlocks"]["public"],
+                   "facts": cfg["facts"],
                    "run": None if self.public else self.runner.status()}
             if not self.public:
                 out["fields"] = [{"path": p, "label": lab, "kind": k, "help": h}
                                  for p, lab, k, h in whatif.FIELDS[coverage.TIER]]
                 out["reason_labels"] = funnel.REASON_LABELS
             return out
+        finally:
+            store.close()
+
+    def token_detail(self, address):
+        """Token page extras (chart history, holder history, points to check, fetch times), or None.
+        Public mode: covered tokens only. From the database only."""
+        cfg, now = self.load_cfg(), time.time()
+        chain = cfg["chain"]
+        store = Store(str(self.db_path))
+        try:
+            ts, tokens = self.tier_tokens(store, coverage.TIER)
+            t = next((x for x in tokens if x["metrics"]["address"] == address), None)
+            if t is None or (self.public and address not in store.current_members(coverage.TIER)):
+                return None
+            m = t["metrics"]
+            prof = store.profiles(chain, [address]).get(address) or {}
+            hold = store.holder_reports(chain, [address]).get(address)
+            hv, hist = holders_view(hold), store.holder_history(address)
+            series = history.view(store.price_history(chain, address), cfg, now)
+            return {
+                "address": address, "history": series, "holder_history": hist,
+                "points": facts.points(m, hv, (prof.get("data") or {}).get("supply"), m.get("links_found"),
+                                       m.get("profile_checked"), hist, cfg),
+                "fetched": {"market": t["ts"], "links": prof.get("updated_at"), "holders": hold and hold["ts"],
+                            "chart": max((s["fetched_at"] or 0 for s in series.values()), default=None) or None},
+            }
         finally:
             store.close()
 
@@ -226,7 +253,8 @@ def holders_view(row):
         return None
     d = row["data"]
     return {"ts": row["ts"], "top10_excl_pct": d.get("top10_excl_pct"), "top10_all_pct": d.get("top10_all_pct"),
-            "excluded_pct": d.get("excluded_pct"), "complete": d.get("complete"), "holders": d.get("holders", [])[:20]}
+            "excluded_pct": d.get("excluded_pct"), "complete": d.get("complete"), "holders": d.get("holders", [])[:20],
+            "authorities": d.get("authorities")}
 
 
 def make_handler(app):
@@ -253,6 +281,10 @@ def make_handler(app):
                     return self.send(200, app.market())
                 if self.path == "/api/run":
                     return self.send(200, None if app.public else app.runner.status())
+                if self.path.startswith("/api/token/"):
+                    addr = self.path[len("/api/token/"):]
+                    d = app.token_detail(addr) if ADDR.match(addr) else None
+                    return self.send(200, d) if d else self.send(404, {"error": "unknown token"})
                 if self.path.startswith("/api/logo/"):
                     addr = self.path[len("/api/logo/"):]
                     png = app.logo(addr) if ADDR.match(addr) else None
@@ -291,7 +323,7 @@ def export(config_path, out_dir):
     import shutil
     from coinsieve import logos
     app, out = App(config_path, public=True), Path(out_dir)
-    (out / "api").mkdir(parents=True, exist_ok=True)
+    (out / "api" / "token").mkdir(parents=True, exist_ok=True)
     (out / "logos").mkdir(exist_ok=True)
     state = app.state()
     for t in state["tokens"]:
@@ -300,6 +332,9 @@ def export(config_path, out_dir):
         t["logo"] = bool(cached and cached.exists() and ADDR.match(addr))
         if t["logo"]:
             shutil.copyfile(cached, out / "logos" / f"{addr}.png")
+        detail = app.token_detail(addr) if ADDR.match(addr) else None
+        if detail:  # token page data (chart, holder history, points to check)
+            (out / "api" / "token" / f"{addr}.json").write_text(json.dumps(detail), encoding="utf-8")
     (out / "api" / "state.json").write_text(json.dumps(state), encoding="utf-8")
     (out / "api" / "market.json").write_text(json.dumps(app.market_view()[0]), encoding="utf-8")
     html = HTML.read_text(encoding="utf-8").replace("<script>\n\"use strict\";",

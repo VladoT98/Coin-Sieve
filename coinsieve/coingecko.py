@@ -31,6 +31,12 @@ class CoinGecko(ThrottledClient):
             raise
 
 
+    def market_chart(self, coin_id, days):
+        """{prices, market_caps, total_volumes: [[ms, value], ...]} (verified 2026-10-09 on JUP: days=30 -> 721
+        hourly points, days=365 -> 366 daily points; keyless days > 365 -> HTTP 401)."""
+        return self._get(f"coins/{coin_id}/market_chart?vs_currency=usd&days={int(days)}")
+
+
 def summarize(coin, platform):
     """The parts of a CoinGecko coin object Coin Sieve uses (stored in token_profiles)."""
     if coin is None:

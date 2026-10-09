@@ -60,6 +60,9 @@ jobs:
       - name: Coverage list with new profiles
         run: python sieve.py run
         continue-on-error: true
+      - name: Token page charts (CoinGecko history, budgeted)
+        run: python sieve.py history
+        continue-on-error: true
       - name: Market strip
         run: python sieve.py market
         continue-on-error: true

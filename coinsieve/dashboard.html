@@ -123,6 +123,42 @@
   .kv th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; } .kv td.m { font-family: var(--mono); }
   .kv td:first-child { width: 34%; }
 
+  /* token page */
+  .tpage { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; padding: 14px 18px 22px; align-content: start; }
+  .tleft, .tmain { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .card h3 { margin: 0 0 8px; font-size: 14px; }
+  .back { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 12.5px; } .back:hover { color: var(--text); }
+  .thead { display: flex; align-items: center; gap: 10px; } .thead .nm2 { font-size: 20px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thead .sb { color: var(--muted); font-size: 13px; font-weight: 600; margin-left: 6px; }
+  .rank { font: 700 11px var(--mono); background: #26272e; color: var(--muted); border-radius: 5px; padding: 1px 6px; margin-left: 6px; cursor: help; }
+  .bigprice { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; } .bigprice .v { font: 800 28px var(--mono); } .bigprice .c { font: 700 13px var(--mono); }
+  .bigprice .t { color: var(--dim); font-size: 11.5px; flex-basis: 100%; }
+  .srow { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .srow:last-child { border-bottom: 0; } .srow .k { color: var(--muted); cursor: help; } .srow .v { font: 700 13px var(--mono); text-align: right; }
+  .supbar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 2px 0 4px; } .supbar span { display: block; height: 100%; background: var(--blue); }
+  .supnote { color: var(--dim); font-size: 11.5px; }
+  .seg { display: inline-flex; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; }
+  .seg button { border: 0; background: none; color: var(--muted); font-weight: 700; padding: 4px 11px; border-radius: 6px; cursor: pointer; }
+  .seg button:hover { color: var(--text); } .seg button.on { background: #2c2d36; color: var(--text); }
+  .ctools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .ctools .src { margin-left: auto; color: var(--dim); font-size: 11.5px; } .ctools .src.stale { color: var(--amber); }
+  .chartbox { position: relative; height: 360px; touch-action: pan-y; user-select: none; } .chartbox svg { display: block; }
+  .chartbox .axis { fill: var(--muted); font: 11px var(--mono); } .chartbox .msg { color: var(--muted); text-align: center; padding-top: 140px; }
+  .ctip { position: absolute; top: 8px; pointer-events: none; background: var(--panel2); border: 1px solid #383943; border-radius: 8px; padding: 7px 10px; font-size: 12px;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, .5); white-space: nowrap; z-index: 2; } .ctip .d { color: var(--muted); margin-bottom: 3px; } .ctip b { font-family: var(--mono); }
+  .about p { margin: 0 0 8px; color: #c9cad3; line-height: 1.6; } .about .note { color: var(--dim); font-size: 12px; }
+  .plist { margin: 0; padding: 0; list-style: none; } .plist li { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px solid var(--line); color: #d6d7de; line-height: 1.45; }
+  .plist li:last-child { border-bottom: 0; } .plist li::before { content: "•"; color: var(--amber); font-weight: 900; }
+  .pintro { color: var(--muted); font-size: 12px; margin: -2px 0 6px; }
+  .conc { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line); margin: 6px 0; }
+  .conc span { display: block; height: 100%; } .conc .x { background: repeating-linear-gradient(45deg, #4a4b55 0 4px, #33343c 4px 8px); } .conc .t { background: var(--amber); } .conc .r { background: #2f6db3; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .htable { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; } .htable th, .htable td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  .htable th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; } .htable td.r, .htable th.r { text-align: right; } .htable td.m { font-family: var(--mono); }
+  .htable a { color: var(--blue); text-decoration: none; } .htable a:hover { text-decoration: underline; }
+  .hcount { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 12.5px; color: var(--muted); } .hcount b { color: var(--text); font: 700 14px var(--mono); }
+  .slist { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+
   /* right panel */
   .right { grid-column: 3; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
   .rtabs { display: flex; border-bottom: 1px solid var(--line); }
@@ -233,7 +269,7 @@
     .side, .market, .center, .right, .app.wide .center { grid-column: 1; grid-row: auto; }
     .side { flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; } .side .grow { display: none; } .nav { flex-direction: row; } .brand { padding: 0 6px 0 0; }
     .market { grid-template-columns: 1fr 1fr; } .center { min-height: 640px; } .twrap { overflow-x: auto; } table.list { min-width: 900px; }
-    .article { padding: 16px; }
+    .article { padding: 16px; } .tpage { grid-template-columns: 1fr; padding: 12px; } .chartbox { height: 300px; }
   }
   @media (max-width: 700px) {
     .market { grid-template-columns: 1fr; } .search { width: 100%; } .bar .meta { margin-left: 0; } .bar .sep { display: none; }
@@ -257,7 +293,7 @@
   <div class="market" id="market"></div>
   <section class="center" id="center"></section>
   <aside class="right" id="right">
-    <div class="rtabs" role="tablist"><button id="tabToken" class="on" role="tab">Token</button><button id="tabFilters" role="tab">Filters</button></div>
+    <div class="rtabs" role="tablist"><button id="tabFilters" class="on" role="tab">Filters</button></div>
     <div class="rbody" id="rbody"></div>
   </aside>
 </div>
@@ -283,7 +319,7 @@ function icon(key, size) {
 
 let S = null, T = null;                       // state from /api/state, texts (site_text.yaml)
 let route = { name: "tokens", anchor: null };
-let view = "covered", query = "", sortKey = null, sortDir = 1, page = 0, pageSize = 10, selected = null, rightTab = "token";
+let view = "covered", query = "", sortKey = null, sortDir = 1, page = 0, pageSize = 10, selected = null, rightTab = "filters";
 const DEF = { maxTop10: null, minMcap: null, minHolders: null, website: false, whitepaper: false, docs: false, github: false, x: false };
 let F = { ...DEF };                            // visitor filters: client-side only, never saved
 let edited = null, whatIf = null, impact = {}, evalTimer = null;   // admin: coverage criteria what-if
@@ -315,8 +351,9 @@ const STATIC = !!window.CS_STATIC;
 const STATIC_FILES = { "/api/state": "api/state.json", "/api/market": "api/market.json" };
 async function api(path, body) {
   if (STATIC) {
-    if (body || !STATIC_FILES[path]) throw new Error("read-only site");
-    const r = await fetch(STATIC_FILES[path] + "?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" });
+    const file = STATIC_FILES[path] || (path.startsWith("/api/token/") && ADDR.test(path.slice(11)) ? "api/token/" + path.slice(11) + ".json" : null);
+    if (body || !file) throw new Error("read-only site");
+    const r = await fetch(file + "?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" });
     if (!r.ok) throw new Error(r.statusText); return r.json();
   }
   const opts = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Coin-Sieve": "1" }, body: JSON.stringify(body) } : {};
@@ -539,13 +576,15 @@ async function loadMarket() {
 // ---- routing + sidebar -------------------------------------------------------------------------
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, "").split("/");
-  route = h[0] === "methodology" ? { name: "methodology", anchor: h[1] || null } : { name: "tokens", anchor: null };
+  route = h[0] === "methodology" ? { name: "methodology", anchor: h[1] || null }
+    : h[0] === "token" && ADDR.test(h[2] || "") ? { name: "token", chain: h[1], address: h[2] } : { name: "tokens", anchor: null };
 }
 addEventListener("hashchange", () => { parseRoute(); hideTip(); renderAll(); });
 function renderNav() {
   const nav = $("nav"); nav.replaceChildren();
   for (const [key, href, label, count] of [["tokens", "#/tokens", T.nav.tokens, S.members], ["methodology", "#/methodology", T.nav.methodology, null]]) {
-    const a = el("a", route.name === key ? "on" : ""); a.href = href; a.title = label; if (route.name === key) a.setAttribute("aria-current", "page");
+    const on = route.name === key || (key === "tokens" && route.name === "token");
+    const a = el("a", on ? "on" : ""); a.href = href; a.title = label; if (on) a.setAttribute("aria-current", "page");
     const ico = el("span", "ico"); ico.append(icon(key, 16)); a.append(ico, el("span", "lbl", label)); if (count != null) a.append(el("span", "cnt", String(count)));
     nav.append(a);
   }
@@ -611,7 +650,7 @@ function renderTable() {
   const frag = document.createDocumentFragment();
   for (const t of rows.slice(page * pageSize, (page + 1) * pageSize)) {
     const row = el("tr", t.metrics.address === selected ? "sel" : ""); row.tabIndex = 0;
-    const pick = () => { selected = t.metrics.address; rightTab = "token"; renderTable(); renderRight(); };
+    const pick = () => { selected = t.metrics.address; location.hash = "#/token/" + S.chain + "/" + t.metrics.address; };
     row.onclick = pick; row.onkeydown = (e) => { if (e.key === "Enter") pick(); };
     for (const c of cols) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : "")); td.append(c.cell(t, td)); row.append(td); }
     frag.append(row);
@@ -714,6 +753,7 @@ function renderMethodology() {
     const h = el("h2", null, s.title); h.id = "m-" + s.id; h.tabIndex = -1; inner.append(h);
     for (const p of s.paras || []) inner.append(el("p", null, p));
     if (s.table === "coverage") inner.append(kvTable([mt.criterion, mt.value], criteriaRows(), [1]));
+    if (s.table === "points") inner.append(kvTable([mt.point, mt.shown_when], pointRows()));
     if (s.table === "sources") inner.append(kvTable([mt.source, mt.provides, mt.cadence, mt.last],
       T.sources.map((x) => [x.name, x.what, x.cadence, S.sources[x.key] ? fill(mt.ago, { ago: ago(S.sources[x.key]) }) : mt.never])));
   }
@@ -733,32 +773,8 @@ function linkChip(t, k) {
     : (T.link_status[l.status] || "") + (src ? ` (${src}, ${clock(l.checked_at)})` : "");
   return c;
 }
-function renderToken(body) {
-  const t = S.tokens.find((x) => x.metrics.address === selected);
-  if (!t) { body.append(el("div", "placeholder", T.panel.select)); return; }
-  const m = t.metrics, r = res(t), head = el("div", "tok"), info = el("div"); info.style.minWidth = "0";
-  const nm = el("div", "nm", m.symbol || "?"); nm.append(el("span", "chain", "SOL"));
-  info.append(nm, el("div", "ds", [m.name, m.age_d == null ? null : fill(T.panel.age, { d: num(m.age_d) })].filter(Boolean).join(" · ")));
-  head.append(coin(t, "av"), info); body.append(head);
-  const pr = el("div", "pricebig"), ch = m.price_change_24h_pct;
-  pr.append(el("span", "v", fmtPrice(m.price_usd)), el("span", "c " + tone(ch, 1), signed(ch, 1, "% 24h")), el("span", "t", fill(T.panel.as_of, { time: clock(t.ts) })));
-  body.append(pr);
-  const lc = el("div", "linkchips"); for (const k of ["website", "whitepaper", "docs", "x", "github"]) lc.append(linkChip(t, k)); body.append(lc);
-  const links = el("div", "lrow");
-  if (ADDR.test(m.address)) {
-    const a = el("a", "lb", "📈 " + T.panel.chart_link); a.href = "https://dexscreener.com/solana/" + m.address; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a);
-    const x = el("a", "lb", "🔎 " + T.panel.explorer_link); x.href = "https://solscan.io/token/" + m.address; x.target = "_blank"; x.rel = "noopener noreferrer"; links.append(x);
-    const c = el("button", "lb", "⧉ " + T.panel.copy); c.title = m.address;
-    c.onclick = async () => { try { await navigator.clipboard.writeText(m.address); c.textContent = "✓ " + T.panel.copied; } catch { c.textContent = "–"; } setTimeout(() => (c.textContent = "⧉ " + T.panel.copy), 1200); };
-    links.append(c);
-  }
-  body.append(links);
-  const h = t.holders, B = T.boxes, C = T.columns, g = el("div", "grid");
-  g.append(box(B.mcap, usd(m.mcap_usd), C.mcap.body), box(B.fdv, usd(m.fdv_usd), T.box_help.fdv), box(B.liquidity, usd(m.liquidity_usd), T.box_help.liquidity),
-           box(B.volume, usd(m.volume_h24_usd), T.box_help.volume), box(B.holders, compact(m.holders), C.holders.body),
-           box(B.top10, h && h.top10_excl_pct != null ? (h.complete ? "" : "≥") + pct(h.top10_excl_pct) : "–", C.top10.body));
-  body.append(g);
-  const checks = r.checks || [], real = checks.filter((c) => !c.info), okN = real.filter((c) => c.ok === true).length;
+function checklistEl(t) {
+  const r = res(t), checks = r.checks || [], real = checks.filter((c) => !c.info), okN = real.filter((c) => c.ok === true).length;
   const sec = el("div", "checks " + r.status), ct = el("div", "ct");
   ct.append(el("b", null, (t.member && !isEdited()) || (isEdited() && r.status === "pass") ? "✓ " + T.panel.covered : (r.status === "unknown" ? "? " : "✕ ") + T.panel.outside),
             el("span", null, fill(T.panel.checks_count, { ok: okN, n: real.length })));
@@ -771,9 +787,193 @@ function renderToken(body) {
     if (c.info) row.title = T.panel.facts_note;
     sec.append(row);
   }
-  body.append(sec);
-  const foot = el("div", "foot"), gl = el("button", "linkbtn", "ⓘ " + T.panel.glossary_link); gl.onclick = showGlossary;
-  foot.append(gl, el("span", null, T.disclaimer)); body.append(foot);
+  return sec;
+}
+function pointRows() {
+  const f = S.facts, mt = T.methodology;
+  return [[T.points.top10.replace("{pct}", "…"), fill(mt.pt_top10, { n: f.top10_pct })],
+          [T.points.contracts.split(". ")[0].replace("{pct}", "…") + ".", fill(mt.pt_contracts, { n: f.contracts_pct })],
+          [T.points.circulating.split(". ")[0].replace(/\{pct\}|\{of\}/g, "…") + ".", fill(mt.pt_circulating, { n: f.circulating_below_pct })],
+          [T.points.mint, mt.pt_mint], [T.points.freeze, mt.pt_freeze], [T.points.no_docs, mt.pt_no_docs],
+          [T.points.liquidity.split(". ")[0].replace(/\{liq\}|\{pct\}/g, "…") + ".", fill(mt.pt_liquidity, { n: f.liquidity_below_pct_of_mcap })],
+          [T.points.holders_down.replace(/\{pct\}|\{days\}/g, "…"), fill(mt.pt_holders_down, { n: f.holders_drop_pct, d: f.holders_drop_days })]];
+}
+
+// ---- token page (#/token/<chain>/<address>) -------------------------------------------------------------
+const details = {};                       // address -> token page data (or null when missing)
+let chartMode = "price", chartRange = "1M", chartRO = null, holdersAll = false;
+const shortAddr = (a) => a.slice(0, 4) + "…" + a.slice(-4);
+const dateFmt = (ts, range) => new Date(ts * 1000).toLocaleString("en-GB", range === "24h" ? { hour: "2-digit", minute: "2-digit" }
+  : range === "1Y" ? { month: "short", year: "2-digit" } : { day: "2-digit", month: "short" });
+const fullDate = (ts) => new Date(ts * 1000).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+function srow(label, value, help, extra) {
+  const r = el("div", "srow"), k = el("span", "k", label); if (help) k.title = help;
+  r.append(k, el("span", "v", value)); return extra ? [r, extra] : [r];
+}
+function rangePoints(d, range) {
+  const h = d && d.history; if (!h) return null;
+  if (range === "1Y") return h["365d"] ? { pts: h["365d"].points, meta: h["365d"] } : null;
+  const s = h["30d"]; if (!s || !s.points.length) return null;
+  const last = s.points[s.points.length - 1][0], span = { "24h": 86400, "7d": 7 * 86400, "1M": 31 * 86400 }[range];
+  return { pts: s.points.filter((p) => p[0] >= last - span), meta: s };
+}
+let svgId = 0;
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (parent) parent.append(e); return e; }
+function axisFmt(v) { return chartMode === "price" ? fmtPrice(v) : usd(v); }
+function drawChart(box, d) {
+  box.replaceChildren();
+  const data = rangePoints(d, chartRange), idx = chartMode === "price" ? 1 : 2, tp = T.token_page;
+  const pts = data ? data.pts.filter((p) => p[idx] != null && p[idx] > 0) : [];
+  if (pts.length < 2) { box.append(el("div", "msg", d && d.history && Object.keys(d.history).length ? tp.no_range : tp.no_chart)); return; }
+  const W = Math.max(280, box.clientWidth), H = box.clientHeight || 360, PR = 74, PT = 10, PB = 22, VH = Math.round(H * 0.16);
+  const plotH = H - PT - PB - VH - 8, plotW = W - PR;
+  const t0 = pts[0][0], t1 = pts[pts.length - 1][0];
+  let lo = Math.min(...pts.map((p) => p[idx])), hi = Math.max(...pts.map((p) => p[idx]));
+  const padv = (hi - lo) * 0.08 || hi * 0.02; lo -= padv; hi += padv;
+  const X = (ts) => (ts - t0) / (t1 - t0 || 1) * plotW, Y = (v) => PT + (hi - v) / (hi - lo) * plotH;
+  const base = pts[0][idx], by = Y(base), id = "c" + (++svgId);
+  const svg = svgEl("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${T.token_page[chartMode]} ${chartRange}` });
+  const defs = svgEl("defs", {}, svg);
+  for (const [name, color] of [["up", "#2fbd71"], ["dn", "#f0475b"]]) {
+    const g = svgEl("linearGradient", { id: id + name, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    svgEl("stop", { offset: "0%", "stop-color": color, "stop-opacity": name === "up" ? .32 : .05 }, g);
+    svgEl("stop", { offset: "100%", "stop-color": color, "stop-opacity": name === "up" ? .05 : .32 }, g);
+  }
+  svgEl("rect", { x: 0, y: 0, width: plotW, height: by }, svgEl("clipPath", { id: id + "a" }, defs));
+  svgEl("rect", { x: 0, y: by, width: plotW, height: H }, svgEl("clipPath", { id: id + "b" }, defs));
+  for (let i = 0; i <= 4; i++) {  // grid + y labels
+    const v = hi - (hi - lo) * i / 4, y = Y(v);
+    svgEl("line", { x1: 0, x2: plotW, y1: y, y2: y, stroke: "#24252b" }, svg);
+    svgEl("text", { x: plotW + 8, y: y + 4, class: "axis" }, svg).textContent = axisFmt(v);
+  }
+  const line = pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[idx]).toFixed(1)).join(" ");
+  const area = line + ` L${X(t1).toFixed(1)} ${by.toFixed(1)} L0 ${by.toFixed(1)} Z`;
+  svgEl("path", { d: area, fill: `url(#${id}up)`, "clip-path": `url(#${id}a)` }, svg);
+  svgEl("path", { d: area, fill: `url(#${id}dn)`, "clip-path": `url(#${id}b)` }, svg);
+  svgEl("path", { d: line, fill: "none", stroke: "#2fbd71", "stroke-width": 1.8, "clip-path": `url(#${id}a)` }, svg);
+  svgEl("path", { d: line, fill: "none", stroke: "#f0475b", "stroke-width": 1.8, "clip-path": `url(#${id}b)` }, svg);
+  svgEl("line", { x1: 0, x2: plotW, y1: by, y2: by, stroke: "#8b8c96", "stroke-dasharray": "2 4" }, svg);
+  const bl = svgEl("g", {}, svg); svgEl("rect", { x: 4, y: by - 10, width: 70, height: 18, rx: 4, fill: "#2c2d36" }, bl);
+  svgEl("text", { x: 9, y: by + 3, class: "axis" }, bl).textContent = axisFmt(base);
+  const last = pts[pts.length - 1][idx], ly = Y(last), up = last >= base;
+  svgEl("rect", { x: plotW + 2, y: ly - 10, width: PR - 4, height: 20, rx: 4, fill: up ? "#2fbd71" : "#f0475b" }, svg);
+  svgEl("text", { x: plotW + 7, y: ly + 4, class: "axis", style: "fill:#0d0e11;font-weight:700" }, svg).textContent = axisFmt(last);
+  const vmax = Math.max(...pts.map((p) => p[3] || 0)), vy = H - PB, bw = Math.max(1, plotW / pts.length - 1);
+  if (vmax > 0) for (const p of pts) { const h = (p[3] || 0) / vmax * VH; svgEl("rect", { x: X(p[0]) - bw / 2, y: vy - h, width: bw, height: h, fill: "#2e3a52" }, svg); }
+  for (let i = 0; i <= 5; i++) {  // x labels
+    const ts = t0 + (t1 - t0) * i / 5, x = X(ts);
+    svgEl("text", { x: Math.min(Math.max(x, 18), plotW - 18), y: H - 6, class: "axis", "text-anchor": "middle" }, svg).textContent = dateFmt(ts, chartRange);
+  }
+  const cross = svgEl("line", { y1: PT, y2: H - PB, stroke: "#8b8c96", "stroke-dasharray": "3 3", visibility: "hidden" }, svg);
+  const dot = svgEl("circle", { r: 4, fill: "#fff", stroke: "#0d0e11", "stroke-width": 2, visibility: "hidden" }, svg);
+  const tip = el("div", "ctip"); tip.hidden = true;
+  const overlay = svgEl("rect", { x: 0, y: 0, width: plotW, height: H, fill: "transparent" }, svg);
+  const show = (e) => {
+    const r = svg.getBoundingClientRect(), x = e.clientX - r.left; let lo2 = 0, hi2 = pts.length - 1;
+    while (hi2 - lo2 > 1) { const mid = (lo2 + hi2) >> 1; if (X(pts[mid][0]) < x) lo2 = mid; else hi2 = mid; }
+    const p = Math.abs(X(pts[lo2][0]) - x) < Math.abs(X(pts[hi2][0]) - x) ? pts[lo2] : pts[hi2], px = X(p[0]);
+    for (const [a, v] of [["x1", px], ["x2", px]]) cross.setAttribute(a, v); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", px); dot.setAttribute("cy", Y(p[idx])); dot.setAttribute("visibility", "visible");
+    const row = (k, v) => { const d2 = el("div"); d2.append(k + " ", el("b", null, v)); return d2; };
+    tip.replaceChildren(el("div", "d", fullDate(p[0])), row(tp.price, fmtPrice(p[1])), row(tp.mcap, usd(p[2])), row(tp.volume, usd(p[3])));
+    tip.hidden = false; tip.style.left = (px > plotW / 2 ? Math.max(0, px - tip.offsetWidth - 14) : px + 14) + "px";
+  };
+  overlay.addEventListener("pointermove", show); overlay.addEventListener("pointerdown", show);
+  overlay.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); });
+  box.append(svg, tip);
+}
+function chartCard(t, d) {
+  const tp = T.token_page, card = el("div", "card"), tools = el("div", "ctools"), box = el("div", "chartbox");
+  const seg = (items, cur, set) => { const g = el("div", "seg"); for (const [k, l] of items) { const b = el("button", k === cur ? "on" : "", l); b.type = "button";
+      b.setAttribute("aria-pressed", k === cur); b.onclick = () => { set(k); for (const x of g.children) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); } drawChart(box, d); }; g.append(b); } return g; };
+  tools.append(seg([["price", tp.price], ["mcap", tp.mcap]], chartMode, (k) => (chartMode = k)),
+               seg(tp.ranges.map((r) => [r, r]), chartRange, (k) => (chartRange = k)));
+  const meta = d && d.history && (d.history["30d"] || d.history["365d"]);
+  if (meta) tools.append(el("span", "src" + (meta.stale ? " stale" : ""), fill(tp.chart_source, { ago: ago(meta.fetched_at) }) + (meta.stale ? " · " + tp.chart_stale : "")));
+  card.append(tools, box);
+  if (chartRO) chartRO.disconnect(); chartRO = new ResizeObserver(() => drawChart(box, d)); chartRO.observe(box);
+  return card;
+}
+function low24(d) { const r = rangePoints(d, "24h"); if (!r || r.pts.length < 2) return null; const v = r.pts.map((p) => p[1]); return [Math.min(...v), Math.max(...v)]; }
+function holdersCard(t, d) {
+  const tp = T.token_page, card = el("div", "card"), h = t.holders; card.append(el("h3", null, tp.holders_title));
+  if (!h) { card.append(el("div", "pintro", T.panel.no_holders)); return card; }
+  const ex = h.excluded_pct || 0, top = h.top10_excl_pct || 0, rest = Math.max(0, 100 - ex - top);
+  card.append(el("div", "pintro", tp.concentration));
+  const bar = el("div", "conc"); for (const [cls, v] of [["x", ex], ["t", top], ["r", rest]]) { const sp = el("span", cls); sp.style.width = v + "%"; bar.append(sp); }
+  const lg = el("div", "legend"); for (const [cls, label, v] of [["x", tp.seg_excluded, ex], ["t", tp.seg_top10, top], ["r", tp.seg_rest, rest]]) {
+    const it = el("span"), sw = el("i"); sw.className = ""; sw.style.background = cls === "x" ? "#4a4b55" : cls === "t" ? "var(--amber)" : "#2f6db3"; it.append(sw, `${label} ${(cls === "t" && !h.complete ? "≥" : "") + pct(v)}`); lg.append(it); }
+  card.append(bar, lg);
+  const tbl = el("table", "htable"), head = el("tr");
+  for (const [txt, cls] of [["#", ""], [tp.col_wallet, ""], [tp.col_type, ""], [tp.col_share, "r"]]) head.append(el("th", cls, txt));
+  const thead = el("thead"); thead.append(head); const tb = el("tbody");
+  (h.holders || []).slice(0, holdersAll ? 20 : 10).forEach((r, i) => {
+    const tr = el("tr"), w = el("td", "m");
+    if (ADDR.test(r.owner)) { const a = el("a", null, shortAddr(r.owner)); a.href = "https://solscan.io/account/" + r.owner; a.target = "_blank"; a.rel = "noopener noreferrer"; w.append(a); } else w.textContent = "–";
+    tr.append(el("td", "m", String(i + 1)), w, el("td", null, r.label || T.holder_kinds[r.kind] || r.kind), el("td", "r m", pct(r.pct))); tb.append(tr); });
+  tbl.append(thead, tb); card.append(el("h3", null, tp.top_holders), tbl);
+  if ((h.holders || []).length > 10) { const b = el("button", "linkbtn", holdersAll ? tp.show_less : tp.show_all); b.onclick = () => { holdersAll = !holdersAll; card.replaceWith(holdersCard(t, d)); }; card.append(b); }
+  const hist = (d && d.holder_history) || [], hc = el("div", "hcount");
+  hc.append(el("span", null, tp.holder_count), el("b", null, compact(t.metrics.holders)));
+  if (hist.length) hc.append(el("span", null, fill(tp.history_since, { date: new Date(hist[0][0] * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) })));
+  if (hist.length >= 2) { const vs = hist.map((p) => p[1]), mn = Math.min(...vs), mx = Math.max(...vs), s2 = svgEl("svg", { width: 120, height: 28, viewBox: "0 0 120 28" });
+    svgEl("polyline", { fill: "none", stroke: "var(--blue)", "stroke-width": 1.5, points: hist.map((p, i) => `${(i / (hist.length - 1) * 118 + 1).toFixed(1)},${(26 - (p[1] - mn) / (mx - mn || 1) * 24).toFixed(1)}`).join(" ") }, s2); hc.append(s2); }
+  card.append(hc);
+  return card;
+}
+async function renderTokenPage() {
+  const tp = T.token_page, center = $("center"); center.replaceChildren();
+  const t = S.tokens.find((x) => x.metrics.address === route.address);
+  if (!t) { center.append(el("div", "placeholder", tp.not_found)); return; }
+  const m = t.metrics, addr = m.address, pg = el("div", "tpage"), left = el("div", "tleft"), main = el("div", "tmain");
+  const back = el("a", "back", tp.back); back.href = "#/tokens";
+  const covered = S.tokens.filter((x) => x.member).sort((a, b) => (b.metrics.mcap_usd || 0) - (a.metrics.mcap_usd || 0));
+  const rank = covered.findIndex((x) => x.metrics.address === addr) + 1;
+  const head = el("div", "thead"), nm = el("div", "nm2", m.name || m.symbol || "?"); nm.append(el("span", "sb", m.symbol || ""), el("span", "chain", "SOL"));
+  if (rank) { const rk = el("span", "rank", "#" + rank); rk.title = tp.rank_tip; nm.append(rk); }
+  head.append(coin(t, "av"), nm);
+  const pr = el("div", "bigprice"), ch = m.price_change_24h_pct;
+  pr.append(el("span", "v", fmtPrice(m.price_usd)), el("span", "c " + tone(ch, 1), signed(ch, 1, "% (24h)")), el("span", "t", fill(T.panel.as_of, { time: clock(t.ts) })));
+  const lc = el("div", "linkchips"); for (const k of ["website", "whitepaper", "docs", "x", "github"]) lc.append(linkChip(t, k));
+  const btns = el("div", "lrow");
+  const a1 = el("a", "lb", "📈 DexScreener"); a1.href = "https://dexscreener.com/solana/" + addr; a1.target = "_blank"; a1.rel = "noopener noreferrer";
+  const a2 = el("a", "lb", "🔎 " + T.panel.explorer_link); a2.href = "https://solscan.io/token/" + addr; a2.target = "_blank"; a2.rel = "noopener noreferrer";
+  const cp = el("button", "lb", "⧉ " + T.panel.copy); cp.title = addr;
+  cp.onclick = async () => { try { await navigator.clipboard.writeText(addr); cp.textContent = "✓ " + T.panel.copied; } catch { cp.textContent = "–"; } setTimeout(() => (cp.textContent = "⧉ " + T.panel.copy), 1200); };
+  btns.append(a1, a2, cp);
+  const st = tp.stats, sh = tp.stat_help, stats = el("div", "card"), h = t.holders, maxS = maxSupply(t), cp2 = circPct(t);
+  const supExtra = el("div"); if (cp2 != null) { const b = el("div", "supbar"), sp = el("span"); sp.style.width = Math.min(100, cp2) + "%"; b.append(sp);
+    supExtra.append(b, el("div", "supnote", fill(tp.circ_bar, { pct: pct(cp2), of: t.supply && t.supply.max != null ? "max" : "total" }))); }
+  const lowHigh = el("span", "v", "–");
+  stats.append(...srow(st.mcap, usd(m.mcap_usd), T.columns.mcap.body), ...srow(st.fdv, usd(m.fdv_usd), T.box_help.fdv),
+    ...srow(st.volume, usd(m.volume_h24_usd), T.box_help.volume), ...srow(st.liquidity, usd(m.liquidity_usd), T.box_help.liquidity),
+    ...srow(st.circ, m.circ_supply == null ? "–" : compact(m.circ_supply) + " " + (m.symbol || ""), sh.circ, supExtra),
+    ...srow(st.total, compact(m.total_supply), sh.total), ...srow(st.max, compact(maxS), sh.max),
+    ...srow(st.holders, compact(m.holders), T.columns.holders.body),
+    ...srow(st.top10, h && h.top10_excl_pct != null ? (h.complete ? "" : "≥") + pct(h.top10_excl_pct) : "–", T.columns.top10.body),
+    ...srow(st.age, m.age_d == null ? "–" : fill(tp.age_days, { d: num(m.age_d) }), sh.age));
+  const lh = el("div", "srow"), lhk = el("span", "k", st.low_high); lhk.title = sh.low_high; lh.append(lhk, lowHigh); stats.append(lh);
+  left.append(back, head, pr, lc, btns, stats, checklistEl(t));
+  const chartSlot = el("div"), about = el("div", "card about"), pts = el("div", "card"), src = el("div", "card");
+  about.append(el("h3", null, fill(tp.about, { sym: m.symbol || m.name || "" })), el("p", "note", tp.ai_pending));
+  pts.append(el("h3", null, tp.points_title), el("div", "pintro", tp.loading));
+  src.append(el("h3", null, tp.sources_title));
+  const holdersSlot = el("div");
+  main.append(chartSlot, about, pts, holdersSlot, src);
+  pg.append(left, main); center.append(pg, el("div", "disc", T.disclaimer));
+  if (!(addr in details)) { try { details[addr] = await api("/api/token/" + addr); } catch { details[addr] = null; } }
+  if (route.name !== "token" || route.address !== addr) return;   // navigated away while loading
+  const d = details[addr];
+  const cc = chartCard(t, d); chartSlot.replaceWith(cc); drawChart(cc.querySelector(".chartbox"), d);   // draw now; the observer redraws on resize
+  holdersSlot.replaceWith(holdersCard(t, d));
+  const lhv = low24(d); if (lhv) lowHigh.textContent = fmtPrice(lhv[0]) + " / " + fmtPrice(lhv[1]);
+  pts.replaceChildren(el("h3", null, tp.points_title), el("div", "pintro", tp.points_intro));
+  const list = el("ul", "plist"); for (const p of (d && d.points) || []) if (T.points[p.id]) list.append(el("li", null, fill(T.points[p.id], p.vars)));
+  pts.append(list.children.length ? list : el("div", "pintro", tp.points_none));
+  const f = (d && d.fetched) || {}, when = (ts) => ts ? ago(ts) : null, sl = el("ul", "slist");
+  for (const [k, ts] of [["src_market", f.market], ["src_chart", f.chart], ["src_links", f.links], ["src_holders", f.holders]])
+    sl.append(el("li", null, when(ts) ? fill(tp[k], { ago: when(ts) }) : tp[k].split(":")[0] + ": " + tp.src_never));
+  src.append(sl);
 }
 
 // ---- right panel: filters (visitor filters + admin coverage criteria) ---------------------------------------------
@@ -833,14 +1033,10 @@ function updateCoversMsg() { const m = $("fmsg"); if (!m) return; m.className = 
   m.textContent = isEdited() ? fill(T.filters.admin_covers, { n: S.tokens.filter(covered).length, m: S.members }) : T.filters.admin_intro; }
 function renderTokensIfShown() { if (route.name === "tokens") renderTable(); }
 
-function renderRight() {
-  $("tabToken").classList.toggle("on", rightTab === "token"); $("tabFilters").classList.toggle("on", rightTab === "filters");
-  $("tabToken").setAttribute("aria-selected", rightTab === "token"); $("tabFilters").setAttribute("aria-selected", rightTab === "filters");
-  const body = $("rbody"); body.replaceChildren();
-  if (rightTab === "filters") renderFilters(body); else renderToken(body);
+function renderRight() {  // the list's side panel: filters (token details open as their own page)
+  $("tabFilters").setAttribute("aria-selected", "true");
+  const body = $("rbody"); body.replaceChildren(); renderFilters(body);
 }
-$("tabToken").onclick = () => { rightTab = "token"; renderRight(); };
-$("tabFilters").onclick = () => { rightTab = "filters"; renderRight(); };
 
 function renderRun() {
   if (S.mode === "public" || !S.run) return;
@@ -849,9 +1045,11 @@ function renderRun() {
   st.textContent = r.running ? "● refreshing" : r.exit_code === 0 ? "● last refresh ok" : r.exit_code ? "● last refresh failed" : "idle"; st.title = r.tail || "";
 }
 function renderAll() {
-  $("app").classList.toggle("wide", route.name === "methodology");
+  $("app").classList.toggle("wide", route.name === "methodology" || route.name === "token");
   renderNav();
-  if (route.name === "methodology") renderMethodology(); else { renderTokensView(); renderRight(); }
+  if (route.name === "methodology") renderMethodology();
+  else if (route.name === "token") { holdersAll = false; renderTokenPage(); }
+  else { renderTokensView(); renderRight(); }
   renderRun();
 }
 

@@ -97,6 +97,8 @@ def update(store, cfg, addresses, rug, rpc, now, force=False):
             stats["failed"] += 1
             continue
         data["source"] = "rugcheck+solana-rpc"
+        # RugCheck states authorities explicitly (null = revoked); Jupiter omits unknown ones
+        data["authorities"] = {k: report[f"{k}Authority"] for k in ("mint", "freeze") if f"{k}Authority" in report}
         store.save_holder_report(chain, addr, data, now)
         store.commit()
         stats["done"] += 1

@@ -256,6 +256,76 @@ box_help:
   liquidity: Money sitting in the token's trading pools, in US dollars. More liquidity means a trade moves the price less.
   volume: Dollar value traded in the last 24 hours.
 
+# Token page (#/token/<chain>/<address>)
+token_page:
+  back: ← Tokens
+  rank_tip: Rank by market cap among the tokens Coin Sieve covers.
+  not_found: This token is not on the list.
+  price: Price
+  mcap: Market cap
+  volume: Volume
+  ranges: ["24h", "7d", "1M", "1Y"]
+  chart_source: "CoinGecko · updated {ago} ago"
+  chart_stale: older than expected
+  no_chart: No price history stored yet. It is fetched in the background, a few tokens per refresh.
+  no_range: Not enough data for this range yet.
+  loading: Loading…
+  stats:
+    mcap: Market cap
+    fdv: Fully diluted value
+    volume: Volume (24h)
+    liquidity: Liquidity
+    circ: Circulating supply
+    total: Total supply
+    max: Max supply
+    holders: Holders
+    top10: Top 10 holders
+    age: Age
+    low_high: 24h low / high
+  stat_help:
+    circ: Tokens in circulation now (Jupiter). Locked or not yet released tokens are not included.
+    total: Tokens that exist now, including ones not yet circulating (Jupiter).
+    max: The most tokens that can ever exist (CoinGecko). Empty when the project has no cap or CoinGecko lists none.
+    age: Time since the token's first trading pool was created.
+    low_high: Lowest and highest hourly price in the last 24 hours (CoinGecko).
+  circ_bar: "{pct} of the {of} supply circulates"
+  age_days: "{d} days"
+  about: About {sym}
+  ai_pending: An AI summary of this token is not available yet.
+  points_title: Points to check
+  points_intro: Facts from this page that you may want to look at. They are not a rating of the token.
+  points_none: Nothing in the data crossed the thresholds listed on the Methodology page.
+  holders_title: Holders
+  concentration: Who holds the supply (20 largest accounts)
+  seg_top10: 10 largest unidentified wallets
+  seg_excluded: Trading pools, locks and contracts
+  seg_rest: Everyone else
+  top_holders: Largest holders
+  col_wallet: Wallet
+  col_share: Share
+  col_type: Type
+  show_all: Show all 20
+  show_less: Show 10
+  holder_count: Holder count
+  history_since: "Recorded since {date}"
+  sources_title: Sources
+  src_market: "Price, market cap, volume and holder count: Jupiter, updated {ago} ago"
+  src_chart: "Chart: CoinGecko, updated {ago} ago"
+  src_links: "Links: the project's listings and homepage, checked {ago} ago"
+  src_holders: "Largest holders: RugCheck and the Solana blockchain, checked {ago} ago"
+  src_never: not fetched yet
+
+# "Points to check": shown only when data crosses a threshold in config `facts:` (no verdicts).
+points:
+  top10: "The 10 largest wallets that could not be identified hold {pct} of the supply."
+  contracts: "{pct} of the supply sits in trading pools, token locks or other contracts (for example vesting or staking). Locked tokens can be released later."
+  circulating: "{pct} of the {of} supply is in circulation. The rest can enter circulation later."
+  mint: "Mint authority is active: new tokens can still be created (RugCheck)."
+  freeze: "Freeze authority is active: token accounts can be frozen (RugCheck)."
+  no_docs: "No whitepaper or documentation was found through the project's own links."
+  liquidity: "Liquidity is {liq}, {pct} of the market cap. Large trades can move the price a lot."
+  holders_down: "The holder count fell {pct} over the last {days} days."
+
 tip:
   more: Learn more →
   sort: Sort ▲▼
@@ -315,6 +385,16 @@ methodology:
   last: Last fetched
   never: not yet
   ago: "{ago} ago"
+  point: Point
+  shown_when: Shown when
+  pt_top10: "The 10 largest unidentified wallets hold at least {n}% of the supply"
+  pt_contracts: "Trading pools, locks and contracts hold at least {n}%"
+  pt_circulating: "Less than {n}% of the max supply (or total supply, if no max) circulates"
+  pt_mint: RugCheck reports the mint authority as active
+  pt_freeze: RugCheck reports the freeze authority as active
+  pt_no_docs: No whitepaper or docs found through the project's own links
+  pt_liquidity: "Liquidity is below {n}% of the market cap"
+  pt_holders_down: "Holder count fell at least {n}% over {d} days"
   sections:
     - id: about
       title: What Coin Sieve is
@@ -337,6 +417,16 @@ methodology:
       paras:
         - Price, 24h change, market cap, liquidity and volume come from Jupiter at the time of the last refresh. The 7-day line uses hourly closing prices from the token's largest trading pool (GeckoTerminal).
         - Market cap counts only tokens in circulation. Tokens that are locked or not released yet are not included.
+    - id: charts
+      title: Token page chart
+      paras:
+        - The chart on each token page uses CoinGecko's price, market cap and volume history across all markets. It is hourly for the last 30 days (24h, 7d and 1M ranges) and daily for the last year (1Y).
+        - The free CoinGecko service offers at most one year of history, so there is no all-time range. The line is green above and red below the first value of the chosen range.
+    - id: points
+      title: Points to check
+      paras:
+        - Each token page lists facts that cross one of the thresholds below, always with the number. They are not ratings and say nothing about where the price goes. Mint and freeze authority come from RugCheck; when RugCheck has no answer, nothing is shown.
+      table: points
     - id: holders
       title: Holders and concentration
       paras:
