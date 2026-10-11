@@ -63,6 +63,11 @@ jobs:
       - name: Token page charts (CoinGecko history, budgeted)
         run: python sieve.py history
         continue-on-error: true
+      - name: AI summaries (only when documents changed; skipped without the secret)
+        run: python sieve.py summaries
+        continue-on-error: true
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       - name: Market strip
         run: python sieve.py market
         continue-on-error: true

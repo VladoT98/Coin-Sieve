@@ -292,6 +292,15 @@ token_page:
   age_days: "{d} days"
   about: About {sym}
   ai_pending: An AI summary of this token is not available yet.
+  ai_docs: What its documents say
+  ai_tokenomics: Supply and allocation, as stated in its documents
+  ai_tokenomics_note: Taken from the project's documents, not checked against on-chain data.
+  ai_known: What is publicly known
+  ai_low_confidence: The AI was not confident about this part.
+  ai_label: "AI-generated on {date} from {sources}. It may contain errors; check the sources."
+  ai_general: general knowledge (no project documents were found)
+  ai_kinds: {whitepaper: whitepaper, docs: docs, homepage: homepage}
+  ai_shortened: shortened
   points_title: Points to check
   points_intro: Facts from this page that you may want to look at. They are not a rating of the token.
   points_none: Nothing in the data crossed the thresholds listed on the Methodology page.
@@ -449,7 +458,9 @@ methodology:
     - id: ai
       title: AI summaries
       paras:
-        - AI summaries are not published yet. When they are, each one will be generated only from the project's own whitepaper or docs, labelled with its source and date, and kept separate from on-chain numbers.
+        - Each token page has a short summary written by an AI model (DeepSeek). It reads the project's own whitepaper, docs site and homepage, found through the project's listings; when there are none, it uses widely reported public facts and says so. Every summary names its sources and date.
+        - The summary only explains. It is checked automatically for advice, predictions and opinion words, and a summary that fails the check is not shown. Supply and allocation figures from documents are labelled as such and are not checked against on-chain data. Summaries are written again only when the documents change.
+        - AI summaries can contain errors. Check the linked sources before relying on them.
     - id: limits
       title: Known limits
       paras:

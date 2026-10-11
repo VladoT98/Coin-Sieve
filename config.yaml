@@ -31,6 +31,22 @@ history:                           # token page chart: `python sieve.py history`
   stale_after_hours: {"30d": 8, "365d": 48}   # older series are marked stale on the page
   max_calls_per_run: 40            # ~20 s apart (api.coingecko_min_interval_s) -> ~13 min at most per run
 
+ai:                                # token page summaries: `python sieve.py summaries` (DEEPSEEK_API_KEY in .env / GitHub secret)
+  url: https://api.deepseek.com/chat/completions
+  model: deepseek-flash            # DeepSeek-V4.1-Flash; alternative: deepseek-v4-pro (verified via /models 2026-10-09)
+  max_output_tokens: 6000         # includes the model's reasoning tokens (seen: up to 1,500 before the answer)
+  max_per_run: 40                  # API calls per run at most
+  docs_refresh_days: 7             # documents re-read this often; a new summary only when they changed
+  price_in_per_mtok: null          # USD per million input tokens - fill in from DeepSeek's pricing page to see costs
+  price_out_per_mtok: null
+  max_pdf_bytes: 15000000
+  max_pdf_pages: 60
+  max_html_bytes: 2000000
+  max_chars_per_doc: 60000         # ~15k tokens
+  max_chars_total: 120000          # ~30k tokens per token at most
+  min_chars: 200                   # shorter texts (e.g. JS-only homepages) are ignored
+  docs_extra_pages: 4              # docs-site pages about the token (tokenomics, allocation, ...) besides the start page
+
 facts:                             # "Points to check" on the token page: shown only when the data crosses these
   top10_pct: 50                    # 10 largest unidentified wallets hold at least this % of supply
   contracts_pct: 20                # pools, locks and other contracts hold at least this %

@@ -166,6 +166,22 @@ CREATE TABLE IF NOT EXISTS price_history (
     error        TEXT,
     PRIMARY KEY (chain, address, span)
 );
+-- AI summaries for the token page (ai_summary.py). One row per token; regenerated only when input_hash changes.
+CREATE TABLE IF NOT EXISTS ai_summaries (
+    chain           TEXT NOT NULL,
+    address         TEXT NOT NULL,
+    input_hash      TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    prompt_version  TEXT NOT NULL,
+    created_at      REAL NOT NULL,
+    docs_checked_at REAL NOT NULL,
+    status          TEXT NOT NULL,            -- ok | withheld (failed the wording/shape checks; never shown)
+    reason          TEXT,
+    data            TEXT,                     -- JSON summary
+    sources         TEXT,                     -- JSON [{kind, url, truncated, note}]
+    usage           TEXT,                     -- JSON token usage reported by the API
+    PRIMARY KEY (chain, address)
+);
 """
 
 # Columns added after the first release. Non-destructive: old rows get the default.
@@ -464,6 +480,29 @@ class Store:
         return [[r[0], r[1]] for r in self.db.execute(
             "SELECT ts, holders FROM snapshots WHERE address = ? AND source = ? AND holders IS NOT NULL ORDER BY ts",
             (address, source))]
+
+    def summaries(self, chain, addresses):
+        addresses = list(addresses)
+        if not addresses:
+            return {}
+        q = ",".join("?" * len(addresses))
+        out = {}
+        for r in self.db.execute(f"SELECT * FROM ai_summaries WHERE chain = ? AND address IN ({q})", [chain, *addresses]):
+            d = dict(r)
+            for k in ("data", "sources", "usage"):
+                d[k] = json.loads(d[k]) if d[k] else None
+            out[d["address"]] = d
+        return out
+
+    def save_summary(self, chain, address, row):
+        self.db.execute("INSERT OR REPLACE INTO ai_summaries (chain, address, input_hash, model, prompt_version, created_at, "
+                        "docs_checked_at, status, reason, data, sources, usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (chain, address, row["input_hash"], row["model"], row["prompt_version"], row["created_at"],
+                         row["docs_checked_at"], row["status"], row["reason"], json.dumps(row["data"]),
+                         json.dumps(row["sources"]), json.dumps(row["usage"])))
+
+    def touch_summary(self, chain, address, now):
+        self.db.execute("UPDATE ai_summaries SET docs_checked_at = ? WHERE chain = ? AND address = ?", (now, chain, address))
 
     def max_ts(self, table, column):
         """Latest fetch time recorded in a table (for 'last updated' labels)."""

@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from coinsieve import charts, coverage, facts, funnel, history, market, site_text, whatif
+from coinsieve import ai_summary, charts, coverage, facts, funnel, history, market, site_text, whatif
 from coinsieve.config_edit import write_values
 from coinsieve.digest import blocked_reason
 from coinsieve.sanitize import clean_text
@@ -152,6 +152,7 @@ class App:
             series = history.view(store.price_history(chain, address), cfg, now)
             return {
                 "address": address, "history": series, "holder_history": hist,
+                "summary": ai_summary.view(store.summaries(chain, [address]).get(address)),
                 "points": facts.points(m, hv, (prof.get("data") or {}).get("supply"), m.get("links_found"),
                                        m.get("profile_checked"), hist, cfg),
                 "fetched": {"market": t["ts"], "links": prof.get("updated_at"), "holders": hold and hold["ts"],

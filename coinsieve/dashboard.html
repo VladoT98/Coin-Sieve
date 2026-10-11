@@ -147,6 +147,9 @@
   .ctip { position: absolute; top: 8px; pointer-events: none; background: var(--panel2); border: 1px solid #383943; border-radius: 8px; padding: 7px 10px; font-size: 12px;
           box-shadow: 0 6px 18px rgba(0, 0, 0, .5); white-space: nowrap; z-index: 2; } .ctip .d { color: var(--muted); margin-bottom: 3px; } .ctip b { font-family: var(--mono); }
   .about p { margin: 0 0 8px; color: #c9cad3; line-height: 1.6; } .about .note { color: var(--dim); font-size: 12px; }
+  .about h4 { margin: 12px 0 5px; font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .about a { color: var(--blue); text-decoration: none; } .about a:hover { text-decoration: underline; }
+  .plist.tok li::before { color: var(--blue); } .plist.tok b { color: var(--text); }
   .plist { margin: 0; padding: 0; list-style: none; } .plist li { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px solid var(--line); color: #d6d7de; line-height: 1.45; }
   .plist li:last-child { border-bottom: 0; } .plist li::before { content: "•"; color: var(--amber); font-weight: 900; }
   .pintro { color: var(--muted); font-size: 12px; margin: -2px 0 6px; }
@@ -921,6 +924,28 @@ function holdersCard(t, d) {
   card.append(hc);
   return card;
 }
+function aboutCard(t, d) {  // AI summary: only text that passed the server-side checks; rendered as plain text
+  const tp = T.token_page, s = d && d.summary, card = el("div", "card about");
+  card.append(el("h3", null, fill(tp.about, { sym: t.metrics.symbol || t.metrics.name || "" })));
+  if (!s) { card.append(el("p", "note", tp.ai_pending)); return card; }
+  card.append(el("p", null, s.what_it_is));
+  if (s.what_docs_say) card.append(el("h4", null, tp.ai_docs), el("p", null, s.what_docs_say));
+  if (s.tokenomics && s.tokenomics.length) {
+    const ul = el("ul", "plist tok");
+    for (const x of s.tokenomics) { const li = el("li"); li.append(el("b", null, x.item + ": "), x.detail + (x.where ? ` (${x.where})` : "")); ul.append(li); }
+    card.append(el("h4", null, tp.ai_tokenomics), ul, el("p", "note", tp.ai_tokenomics_note));
+  }
+  if (s.what_is_known) { card.append(el("h4", null, tp.ai_known), el("p", null, s.what_is_known));
+    if (s.confidence === "low") card.append(el("p", "note", tp.ai_low_confidence)); }
+  const src = el("p", "note"), list = (s.sources || []).filter((x) => httpsUrl(x.url));
+  const parts = fill(tp.ai_label, { date: new Date(s.created_at * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }), sources: "\u0000" }).split("\u0000");
+  src.append(parts[0]);
+  if (!list.length) src.append(tp.ai_general);
+  list.forEach((x, i) => { const a = el("a", null, (tp.ai_kinds[x.kind] || x.kind) + (x.truncated ? ` (${tp.ai_shortened})` : "")); a.href = x.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
+    src.append(i ? ", " : "", a); });
+  src.append(parts[1] || ""); card.append(src);
+  return card;
+}
 async function renderTokenPage() {
   const tp = T.token_page, center = $("center"); center.replaceChildren();
   const t = S.tokens.find((x) => x.metrics.address === route.address);
@@ -955,7 +980,7 @@ async function renderTokenPage() {
   const lh = el("div", "srow"), lhk = el("span", "k", st.low_high); lhk.title = sh.low_high; lh.append(lhk, lowHigh); stats.append(lh);
   left.append(back, head, pr, lc, btns, stats, checklistEl(t));
   const chartSlot = el("div"), about = el("div", "card about"), pts = el("div", "card"), src = el("div", "card");
-  about.append(el("h3", null, fill(tp.about, { sym: m.symbol || m.name || "" })), el("p", "note", tp.ai_pending));
+  about.append(el("h3", null, fill(tp.about, { sym: m.symbol || m.name || "" })), el("p", "note", tp.loading));
   pts.append(el("h3", null, tp.points_title), el("div", "pintro", tp.loading));
   src.append(el("h3", null, tp.sources_title));
   const holdersSlot = el("div");
@@ -964,6 +989,7 @@ async function renderTokenPage() {
   if (!(addr in details)) { try { details[addr] = await api("/api/token/" + addr); } catch { details[addr] = null; } }
   if (route.name !== "token" || route.address !== addr) return;   // navigated away while loading
   const d = details[addr];
+  about.replaceWith(aboutCard(t, d));
   const cc = chartCard(t, d); chartSlot.replaceWith(cc); drawChart(cc.querySelector(".chartbox"), d);   // draw now; the observer redraws on resize
   holdersSlot.replaceWith(holdersCard(t, d));
   const lhv = low24(d); if (lhv) lowHigh.textContent = fmtPrice(lhv[0]) + " / " + fmtPrice(lhv[1]);

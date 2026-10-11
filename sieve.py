@@ -4,6 +4,7 @@ Usage:
     python sieve.py [run] [--tiers coverage,new_launches,emerging,established]   # evaluate (default: coverage)
     python sieve.py profiles [--max N]                                  # links, native check, supply, logos (daily)
     python sieve.py history [--max-calls N]                             # token page charts (CoinGecko, budgeted)
+    python sieve.py summaries [--estimate] [--only ADDR] [--limit N] [--force]   # AI summaries (DeepSeek)
     python sieve.py market                                              # refresh the market strip once
     python sieve.py export [--out site]                                 # static public site (GitHub Pages)
     python sieve.py holders [--force]                                   # top holders (RugCheck + Solana RPC, daily)
@@ -162,6 +163,37 @@ def cmd_history(cfg, max_calls=None):
         st = history.fetch(store, cfg, cg, list(store.current_members("coverage")), time.time(), max_calls)
         print(f"Price history: {st['fetched']} updated, {st['failed']} failed (of {st['planned']} due)"
               + (" - stopped on CoinGecko rate limit, cached series kept" if st["rate_limited"] else ""))
+    finally:
+        store.close()
+
+
+def cmd_summaries(cfg, args):
+    """AI summaries for covered tokens. Without a key (or with --estimate) nothing is sent to the API."""
+    import os
+    from coinsieve import ai_summary
+    key = os.environ.get("DEEPSEEK_API_KEY") or dotenv_values(".env").get("DEEPSEEK_API_KEY")
+    if not key and not args.estimate:
+        return print("Summaries: no DEEPSEEK_API_KEY in .env or environment - skipped.")
+    store = Store(cfg["storage"]["db_path"])
+    try:
+        members = {a: rec["metrics"] for a, rec in store.latest("coverage", list(store.current_members("coverage"))).items()}
+        client = ai_summary.DeepSeek(key, cfg["ai"]) if key else None
+        limit = args.limit if args.limit is not None else cfg["ai"]["max_per_run"]
+        try:
+            rows = ai_summary.run(store, cfg, client, members, args.estimate, args.only, limit, args.force)
+        except ai_summary.AIError as e:
+            print(f"Summaries stopped: {e} (summaries made so far are kept)")
+            rows = []
+        a, tin, tout = cfg["ai"], 0, 0
+        for r in rows:
+            tin, tout = tin + (r.get("input_tokens") or r["est_input_tokens"]), tout + (r.get("output_tokens") or 0)
+            docs = ",".join(r["docs"]) or "no documents"
+            print(f"  {(r['symbol'] or '?')[:10]:<11}{docs:<30}{r['est_input_tokens']:>8,} tok  {r['action']}")
+        cost = ""
+        if a["price_in_per_mtok"] is not None and a["price_out_per_mtok"] is not None:
+            est_out = tout or len(rows) * 600
+            cost = f", about ${tin / 1e6 * a['price_in_per_mtok'] + est_out / 1e6 * a['price_out_per_mtok']:.3f}"
+        print(f"Summaries: {len(rows)} tokens, input about {tin:,} tokens, output {tout:,} tokens{cost} (model {a['model']})")
     finally:
         store.close()
 
@@ -430,6 +462,11 @@ def main():
     p_ch.add_argument("--max-calls", type=int, default=None, help="GeckoTerminal calls (default: charts.max_calls_per_run)")
     p_hist = sub.add_parser("history", help="token page charts: price / market cap / volume history (CoinGecko)")
     p_hist.add_argument("--max-calls", type=int, default=None, help="CoinGecko calls (default: history.max_calls_per_run)")
+    p_ai = sub.add_parser("summaries", help="AI summaries for token pages (DeepSeek; needs DEEPSEEK_API_KEY)")
+    p_ai.add_argument("--estimate", action="store_true", help="read documents and print sizes; no API calls")
+    p_ai.add_argument("--only", default=None, help="one token address")
+    p_ai.add_argument("--limit", type=int, default=None, help="API calls this run (default: ai.max_per_run)")
+    p_ai.add_argument("--force", action="store_true", help="regenerate even when documents did not change")
     sub.add_parser("market", help="refresh the market strip once (scheduled job)")
     p_exp = sub.add_parser("export", help="write the static public site (GitHub Pages)")
     p_exp.add_argument("--out", default="site")
@@ -459,6 +496,8 @@ def main():
         return cmd_holders(cfg, args.force)
     if command == "charts":
         return cmd_charts(cfg, args.max_calls)
+    if command == "summaries":
+        return cmd_summaries(cfg, args)
     if command == "history":
         return cmd_history(cfg, args.max_calls)
     if command == "market":
