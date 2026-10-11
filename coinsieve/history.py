@@ -8,6 +8,8 @@ The website only reads the stored series.
 import logging
 import re
 
+from coinsieve.coingecko import CHAIN
+
 log = logging.getLogger(__name__)
 
 _COIN_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,99}$")
@@ -50,7 +52,7 @@ def plan(ids, attempts, cfg, now, limit=None):
 
 def fetch(store, cfg, cg, addresses, now, limit=None):
     """Fetch due series for the given covered addresses. Returns counts."""
-    chain = cfg["chain"]
+    chain = CHAIN
     ids = candidates(store.profiles(chain, addresses))
     todo = plan(ids, store.history_attempts(chain), cfg, now, limit)
     st = {"planned": len(todo), "fetched": 0, "failed": 0, "rate_limited": False}

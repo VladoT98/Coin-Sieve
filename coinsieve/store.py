@@ -182,6 +182,12 @@ CREATE TABLE IF NOT EXISTS ai_summaries (
     usage           TEXT,                     -- JSON token usage reported by the API
     PRIMARY KEY (chain, address)
 );
+-- Small cached lists (coverage.py: CoinGecko category members, refreshed daily).
+CREATE TABLE IF NOT EXISTS kv (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    ts    REAL NOT NULL
+);
 """
 
 # Columns added after the first release. Non-destructive: old rows get the default.
@@ -503,6 +509,13 @@ class Store:
 
     def touch_summary(self, chain, address, now):
         self.db.execute("UPDATE ai_summaries SET docs_checked_at = ? WHERE chain = ? AND address = ?", (now, chain, address))
+
+    def get_kv(self, key):
+        r = self.db.execute("SELECT value, ts FROM kv WHERE key = ?", (key,)).fetchone()
+        return dict(r) if r else None
+
+    def set_kv(self, key, value, now):
+        self.db.execute("INSERT OR REPLACE INTO kv (key, value, ts) VALUES (?, ?, ?)", (key, value, now))
 
     def max_ts(self, table, column):
         """Latest fetch time recorded in a table (for 'last updated' labels)."""

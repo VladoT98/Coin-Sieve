@@ -1,9 +1,11 @@
-"""Token profiles for the coverage list: project links, Solana-native check, supply, logo cache.
+"""Token profiles for the coverage list: project links, chains and contracts, exchanges, supply, logo cache.
 
-Per token (daily, budgeted): Jupiter fields already stored with the coverage run (website, twitter, icon,
-supply) + DexScreener `info.websites` / `info.socials` (one batch call, verified 2026-10-09:
-websites [{url, label}], socials [{url, type: twitter|telegram|discord}], imageUrl) + CoinGecko contract lookup
-(see coingecko.py) + the project's homepage, scanned for whitepaper / docs / GitHub links.
+Per token (daily, budgeted): CoinGecko `coins/{id}` (links, platforms, categories, genesis date, first 100 tickers;
+see coingecko.py) + DexScreener `tokens/v1/{chain}/{contract}` `info` for tokens issued on a chain it lists (CoinGecko
+has no homepage for some, e.g. JUP; verified 2026-10-11 on solana, ethereum, bsc, base, arbitrum, polygon, avalanche,
+optimism, sui, tron; EVM addresses come back checksummed, so they are matched case-insensitively) + the project's
+homepage, scanned for whitepaper / docs / GitHub links. When the token's age is not
+proven by the market data, the 1-year price history is fetched once (stored for the token page chart too).
 
 Links are only taken from these sources — never constructed, except one check of `https://docs.<domain>` on
 the project's own domain, kept only if it answers with an HTML page. Link status:
@@ -18,12 +20,17 @@ import functools
 import logging
 import re
 import urllib.parse
+from datetime import datetime, timezone
 
-from coinsieve import coingecko, webfetch
+from coinsieve import coingecko, history, webfetch
 
 log = logging.getLogger(__name__)
 
 LINK_KINDS = ("website", "whitepaper", "docs", "x", "github")
+# CoinGecko platform id -> DexScreener chainId (each checked live 2026-10-11)
+DEX_CHAINS = {"solana": "solana", "ethereum": "ethereum", "binance-smart-chain": "bsc", "base": "base",
+              "arbitrum-one": "arbitrum", "polygon-pos": "polygon", "avalanche": "avalanche",
+              "optimistic-ethereum": "optimism", "sui": "sui", "tron": "tron"}
 COUNTS = ("ok", "blocked", "error")          # statuses that mean "the project lists this link"
 _DOCS_HOSTS = ("gitbook.io", "notion.site", "readthedocs.io", "mintlify.app")
 _WP_HINT = re.compile(r"white\s*-?\s*paper|lite\s*-?\s*paper|light\s*-?\s*paper", re.I)
@@ -86,16 +93,18 @@ def classify(url, page, hint):
 
 
 def build(address, jm, dex_info, cg_summary, old, pcfg, now, fetcher=webfetch.fetch):
-    """Profile dict for one token. jm = stored coverage metrics (Jupiter); dex_info = DexScreener `info`;
+    """Profile dict for one token. jm = stored coverage metrics (CoinGecko markets; `website` / `twitter` only from
+    older Jupiter metrics); dex_info = DexScreener `info` (None for the coverage list);
     cg_summary = coingecko.summarize(...) or None when the lookup failed (old CoinGecko data is kept)."""
     old = old or {}
     cg = cg_summary if cg_summary is not None else old.get("coingecko")
     cg_ok = cg_summary is not None
     links = {}
 
-    # website: first listed homepage; Jupiter, then DexScreener, then CoinGecko
-    sites = [(jm.get("website"), "jupiter")] + [(w.get("url"), "dexscreener") for w in (dex_info or {}).get("websites") or []]
-    sites += [(u, "coingecko") for u in ((cg or {}).get("homepage") or [])]
+    # website: first listed homepage; Jupiter (older metrics), then CoinGecko, then DexScreener's "Website" entries
+    sites = [(jm.get("website"), "jupiter")] + [(u, "coingecko") for u in ((cg or {}).get("homepage") or [])]
+    sites += [(w.get("url"), "dexscreener") for w in (dex_info or {}).get("websites") or []
+              if str(w.get("label") or "").lower() == "website"]
     home = home_page = None
     for url, src in sites:
         if not url:
@@ -168,61 +177,104 @@ def build(address, jm, dex_info, cg_summary, old, pcfg, now, fetcher=webfetch.fe
         "coingecko": cg,
         "coingecko_checked_at": now if cg_ok else old.get("coingecko_checked_at"),
         "icon": jm.get("icon") or (dex_info or {}).get("imageUrl"),
-        "supply": {"circulating": jm.get("circ_supply"), "total": jm.get("total_supply"), "source": "jupiter",
-                   "max": ((cg or {}).get("supply") or {}).get("max"),
-                   "max_source": "coingecko" if ((cg or {}).get("supply") or {}).get("max") is not None else None},
+        "supply": {"circulating": jm.get("circ_supply"), "total": jm.get("total_supply"), "source": "coingecko",
+                   "max": jm.get("max_supply") if jm.get("max_supply") is not None else ((cg or {}).get("supply") or {}).get("max"),
+                   "max_source": "coingecko"},
+        **{k: old[k] for k in ("first_price_ts", "age_checked_at") if k in old},
     }
+
+
+def _date_ts(d):
+    try:
+        return datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
+    except (TypeError, ValueError):
+        return None
 
 
 def facts(profile, ccfg):
     """Coverage facts derived from a stored profile (merged into the coverage metrics, so the dashboard's
     what-if needs no DB access). None = not known yet."""
     if not profile:
-        return {"profile_checked": False, "native": None, "native_detail": "not checked yet",
-                "website_or_docs": None, "links_found": []}
+        return {"profile_checked": False, "website_or_docs": None, "links_found": [], "exchanges": None,
+                "age_checked": False, "platform": None, "contracts": {}, "genesis_ts": None, "first_price_ts": None}
     links = profile.get("links") or {}
     found = [k for k in LINK_KINDS if (links.get(k) or {}).get("status") in COUNTS + ("listed",)]
-    cg = profile.get("coingecko")
-    if not cg:
-        native, detail = None, "not checked yet"
-    elif not cg.get("listed"):
-        native, detail = None, "not listed on CoinGecko"
-    else:
-        bridged = sorted(set(cg.get("categories") or []) & set(ccfg["exclude_cg_categories"]))
-        native = cg.get("platform") == ccfg["native_platform"] and not bridged
-        detail = ", ".join(bridged) if bridged else (cg.get("platform") or "unknown platform")
-    return {"profile_checked": True, "native": native, "native_detail": detail,
-            "website_or_docs": any(k in found for k in ("website", "whitepaper", "docs")), "links_found": found}
+    cg = profile.get("coingecko") or {}
+    genesis = _date_ts(cg.get("genesis_date"))
+    return {"profile_checked": True, "website_or_docs": any(k in found for k in ("website", "whitepaper", "docs")),
+            "links_found": found, "exchanges": cg.get("exchanges") if cg.get("listed") else None,
+            # age is settled once the profiles job looked for a genesis date and the 1-year history
+            "age_checked": bool(cg.get("listed")) and "age_checked_at" in profile,
+            "platform": cg.get("platform"), "contracts": cg.get("platforms") or {},
+            "genesis_ts": genesis, "first_price_ts": profile.get("first_price_ts")}
 
 
-def update(store, cfg, addresses, metrics, cg_client, dex, now, fetcher=None, cache_logo=None):
-    """Refresh due profiles (oldest first, at most profiles.max_per_run). Returns counts."""
-    chain, pcfg = cfg["chain"], cfg["profiles"]
-    fetcher = fetcher or functools.partial(webfetch.fetch, timeout=pcfg["fetch_timeout_s"])
-    old = store.profiles(chain, addresses)
-    due = sorted((a for a in addresses if a not in old or now - old[a]["updated_at"] >= pcfg["refresh_hours"] * 3600),
-                 key=lambda a: (old.get(a) or {}).get("updated_at") or 0)[:pcfg["max_per_run"]]
-    stats = {"due": len(due), "done": 0, "coingecko_failed": 0, "logos": 0}
-    if not due:
-        return stats
+def dex_info(dex, cg):
+    """DexScreener `info` (websites, socials) for the token's contract on its issuing chain, or None."""
+    chain, contract = DEX_CHAINS.get((cg or {}).get("platform")), ((cg or {}).get("platforms") or {}).get((cg or {}).get("platform"))
+    if not dex or not chain or not contract:
+        return None
     try:
-        pairs = dex.main_pairs(chain, due)
+        pairs = dex._get(f"tokens/v1/{chain}/{contract}") or []
     except Exception as e:  # links from DexScreener are optional
-        log.warning("dexscreener info lookup failed: %s", e)
-        pairs = {}
-    for addr in due:
+        log.warning("dexscreener info %s/%s failed: %s", chain, contract, e)
+        return None
+    for p in pairs:
+        if str((p.get("baseToken") or {}).get("address") or "").lower() == contract.lower():
+            return p.get("info")
+    return None
+
+
+def update(store, cfg, ids, metrics, cg_client, now, fetcher=None, cache_logo=None, dex=None):
+    """Refresh due profiles (oldest first, at most profiles.max_per_run). Stops early on a CoinGecko rate limit
+    (the rest are due again next run). Returns counts."""
+    chain, pcfg, min_age = coingecko.CHAIN, cfg["profiles"], cfg["coverage"]["min_age_days"]
+    fetcher = fetcher or functools.partial(webfetch.fetch, timeout=pcfg["fetch_timeout_s"])
+    old = store.profiles(chain, ids)
+    due = sorted((a for a in ids if a not in old or now - old[a]["updated_at"] >= pcfg["refresh_hours"] * 3600),
+                 key=lambda a: ((old.get(a) or {}).get("updated_at") or 0, -((metrics.get(a) or {}).get("mcap_usd") or 0))
+                 )[:pcfg["max_per_run"]]
+    stats = {"due": len(due), "done": 0, "coingecko_failed": 0, "logos": 0, "age_checks": 0, "rate_limited": False}
+    for cid in due:
         try:
-            cg = coingecko.summarize(cg_client.contract(cfg["coverage"]["native_platform"], addr),
-                                     cfg["coverage"]["native_platform"])
-        except Exception as e:  # rate limit / outage: keep the old CoinGecko data
-            log.warning("coingecko %s failed: %s", addr, e)
+            cg = coingecko.summarize(cg_client.coin(cid))
+        except RuntimeError as e:  # rate limit / outage after retries: stop, the rest stay due
+            log.warning("coingecko %s failed, stopping: %s", cid, e)
+            stats.update(coingecko_failed=stats["coingecko_failed"] + 1, rate_limited=True)
+            break
+        except Exception as e:  # keep the old CoinGecko data for this token
+            log.warning("coingecko %s failed: %s", cid, e)
             cg = None
             stats["coingecko_failed"] += 1
-        prof = build(addr, metrics.get(addr) or {}, (pairs.get(addr) or {}).get("info"), cg,
-                     (old.get(addr) or {}).get("data"), pcfg, now, fetcher)
-        store.save_profile(chain, addr, prof, now)
+        m = metrics.get(cid) or {}
+        prof = build(cid, m, dex_info(dex, cg), cg, (old.get(cid) or {}).get("data"), pcfg, now, fetcher)
+        if cg and cg.get("listed") and "age_checked_at" not in prof:
+            ok, ts = _first_price(store, cg_client, cid, m, cg, min_age, now, stats)
+            if ok:
+                prof.update(first_price_ts=ts, age_checked_at=now)
+        store.save_profile(chain, cid, prof, now)
         store.commit()
         stats["done"] += 1
         if cache_logo and prof.get("icon") and cache_logo(prof["icon"]):
             stats["logos"] += 1
     return stats
+
+
+def _first_price(store, cg_client, cid, m, cg, min_age, now, stats):
+    """(settled, first price ts or None): the first point of the token's 1-year price history. Fetched only when
+    the market data and the genesis date don't already prove `min_age` days; a stored series is reused.
+    settled=False when the fetch failed (the age stays "not checked yet" and is retried at the next refresh)."""
+    known = [m.get("history_days")] + [(now - ts) / 86400 for ts in (_date_ts(cg.get("genesis_date")),) if ts]
+    if any(d is not None and d >= min_age for d in known):
+        return True, None
+    pts = (store.price_history(coingecko.CHAIN, cid).get("365d") or {}).get("points")
+    if not pts:
+        try:
+            pts = history.parse(cg_client.market_chart(cid, 365))
+            stats["age_checks"] += 1
+        except Exception as e:
+            log.warning("coingecko 1y history %s failed: %s", cid, e)
+            return False, None
+        if pts:
+            store.save_history(coingecko.CHAIN, cid, "365d", pts, now)
+    return True, (pts[0][0] if pts else None)

@@ -19,6 +19,7 @@ import time
 import requests
 
 from coinsieve import docs as docs_mod
+from coinsieve.coingecko import CHAIN
 from coinsieve.sanitize import _CTRL, _URL
 
 log = logging.getLogger(__name__)
@@ -53,7 +54,10 @@ class AIError(RuntimeError):
 
 def facts_block(m, profile):
     supply = (profile or {}).get("supply") or {}
-    return {"name": m.get("name"), "symbol": m.get("symbol"), "chain": "Solana", "contract_address": m.get("address"),
+    cg = (profile or {}).get("coingecko") or {}
+    return {"name": m.get("name"), "symbol": m.get("symbol"),
+            "blockchain": cg.get("platform") or "its own blockchain (not a token on another chain)",
+            "contracts": cg.get("platforms") or {},
             "age_days": round(m["age_d"]) if m.get("age_d") is not None else None,
             "circulating_supply": m.get("circ_supply"), "max_supply": supply.get("max"),
             "website": (((profile or {}).get("links") or {}).get("website") or {}).get("url")}
@@ -146,7 +150,7 @@ def run(store, cfg, client, members, estimate=False, only=None, limit=None, forc
         collect=docs_mod.collect):
     """Generate due summaries. members = {address: coverage metrics}. Returns per-token report rows."""
     now = now or time.time()
-    acfg, pub, chain = cfg["ai"], cfg["publishing"], cfg["chain"]
+    acfg, pub, chain = cfg["ai"], cfg["publishing"], CHAIN
     addrs = [a for a in members if not only or a == only]
     old, profs = store.summaries(chain, addrs), store.profiles(chain, addrs)
     report, calls = [], 0

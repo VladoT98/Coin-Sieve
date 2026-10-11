@@ -53,6 +53,31 @@ def fmt_m(v):
     return "-" if v is None else f"{v / 1e6:,.1f}M"
 
 
+def print_coverage_run(run, show_rejects=15):
+    members = sorted((x for x in run.results if not x[1]), key=lambda x: -(x[0]["mcap_usd"] or 0))
+    rest = sorted((x for x in run.results if x[1]), key=lambda x: -(x[0]["mcap_usd"] or 0))
+    print("\nCoverage list (CoinGecko, all chains)")
+    if run.outage:
+        print("  CoinGecko returned no data (likely rate limit or outage). Evaluation skipped; membership unchanged.")
+        return
+    print(f"  universe: {run.counts['universe']} | in scope (evaluated): {len(run.results)} | covered: {len(members)}")
+    big = lambda v: "-" if v is None else f"{v / 1e9:,.1f}B" if v >= 1e9 else f"{v / 1e6:,.0f}M"  # noqa: E731
+    hdr = f"{'SYMBOL':<11}{'RANK':>6}{'AGE_D':>8}{'MCAP':>11}{'VOL24':>10}{'MKTS':>6}  RESULT"
+    print(hdr)
+    print("-" * len(hdr))
+    for m, reasons in members + rest[:show_rejects]:
+        verdict = "COVERED" if not reasons else "; ".join(r.split(":")[0] for r in reasons)
+        age = "-" if m.get("age_d") is None else f"{m['age_d']:.0f}"
+        mk = "-" if m.get("exchanges") is None else m["exchanges"]
+        print(f"{(m['symbol'] or '?')[:10]:<11}{m.get('rank') or '-':>6}{age:>8}{big(m['mcap_usd']):>11}"
+              f"{big(m['volume_h24_usd']):>10}{mk:>6}  {verdict}")
+    if len(rest) > show_rejects:
+        print(f"  ... {len(rest) - show_rejects} more not covered (see logs)")
+    tally = Counter(r.split(":")[0] for _, reasons in run.results for r in reasons)
+    if tally:
+        print("  Reasons: " + ", ".join(f"{k} {n}" for k, n in tally.most_common()))
+
+
 def print_jupiter_tier_run(run, show_rejects=10):
     members = [x for x in run.results if not x[1]]
     rejects = sorted((x for x in run.results if x[1]), key=lambda x: -(x[0]["mcap_usd"] or 0))

@@ -54,10 +54,10 @@ def _jup(tier):
 
 
 _COVERAGE = [
-    ("coverage.min_age_days", "Min age (days)", "num", "Jupiter: first trading pool."),
+    ("coverage.min_age_days", "Min age (days)", "num", "Lower bound from CoinGecko price history."),
     ("coverage.min_mcap_usd", "Min market cap ($)", "num", ""),
-    ("coverage.min_liquidity_usd", "Min liquidity ($)", "num", ""),
-    ("coverage.require_native_chain", "Require issued on Solana (CoinGecko)", "bool", ""),
+    ("coverage.min_volume_h24_usd", "Min 24h volume ($)", "num", ""),
+    ("coverage.min_exchanges", "Min markets traded on", "num", "Distinct exchanges (CEX + DEX) in CoinGecko's tickers."),
     ("coverage.require_website_or_docs", "Require website or docs found", "bool", ""),
     ("coverage.scope_min_mcap_usd", "Check from mcap ($)", "num",
      "Tokens below this are not checked at all (applies from the next refresh)."),
@@ -311,7 +311,8 @@ def _hints(tier):
                 "ranking.min_holder_growth_per_hour": ("holder_growth_per_h", "n")}
     if tier == "coverage":
         return {"coverage.min_age_days": ("age_d", "d"), "coverage.min_mcap_usd": ("mcap_usd", "usd"),
-                "coverage.min_liquidity_usd": ("liquidity_usd", "usd"), "coverage.scope_min_mcap_usd": ("mcap_usd", "usd")}
+                "coverage.min_volume_h24_usd": ("volume_h24_usd", "usd"), "coverage.min_exchanges": ("exchanges", "n"),
+                "coverage.scope_min_mcap_usd": ("mcap_usd", "usd")}
     p = f"tiers.{tier}."
     return {p + "min_age_days": ("age_d", "d"), p + "max_age_days": ("age_d", "d"), p + "scope_min_mcap_usd": ("mcap_usd", "usd"),
             p + "min_mcap_usd": ("mcap_usd", "usd"), p + "max_mcap_usd": ("mcap_usd", "usd"),

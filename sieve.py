@@ -1,13 +1,14 @@
-"""Coin Sieve: profiles of established tokens. Evaluates the coverage list, fetches profiles, posts digests.
+"""Coin Sieve: profiles of established tokens on every blockchain. Evaluates the coverage list (CoinGecko), fetches
+profiles, posts digests (Telegram tiers stay Solana-only: New Launches / Emerging / Established via Jupiter).
 
 Usage:
     python sieve.py [run] [--tiers coverage,new_launches,emerging,established]   # evaluate (default: coverage)
-    python sieve.py profiles [--max N]                                  # links, native check, supply, logos (daily)
+    python sieve.py profiles [--max N]                                  # links, contracts, exchanges, age, logos (daily)
     python sieve.py history [--max-calls N]                             # token page charts (CoinGecko, budgeted)
     python sieve.py summaries [--estimate] [--only ADDR] [--limit N] [--force]   # AI summaries (DeepSeek)
     python sieve.py market                                              # refresh the market strip once
     python sieve.py export [--out site]                                 # static public site (GitHub Pages)
-    python sieve.py holders [--force]                                   # top holders (RugCheck + Solana RPC, daily)
+    python sieve.py holders [--force]                                   # top holders of Solana-issued tokens (daily)
     python sieve.py digest daily|weekly|alerts [--post]                  # dry run unless --post (TEST chat)
     python sieve.py telegram-check                                      # one test line to the TEST chat
     python sieve.py track-record                                        # what happened after tier entries
@@ -34,11 +35,12 @@ from coinsieve.evallog import EvalLog
 from coinsieve.geckoterminal import GeckoTerminal
 from coinsieve.jupiter import Jupiter
 from coinsieve.ranking import sort_key
-from coinsieve.report import print_events, print_jupiter_tier_run, print_tier_run
+from coinsieve.report import print_coverage_run, print_events, print_jupiter_tier_run, print_tier_run
 from coinsieve.rugcheck import RugCheck
 from coinsieve.solana_rpc import SolanaRPC
 from coinsieve.store import Store
 from coinsieve.telegram import Telegram, TelegramError
+from coinsieve.coingecko import CHAIN as CG_CHAIN
 from coinsieve.tiers import jupiter_tiers, new_launches
 
 log = logging.getLogger("sieve")
@@ -72,7 +74,7 @@ def cmd_run(cfg, tiers):
 
     runs = []
     if "coverage" in tiers:
-        runs.append(coverage.evaluate(cfg, jup, store, evlog, now))
+        runs.append(coverage.evaluate(cfg, coingecko_client(cfg), store, evlog, now))
     if "new_launches" in tiers:
         dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
         rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
@@ -87,20 +89,27 @@ def cmd_run(cfg, tiers):
         if not run.outage:
             store.save_latest(run.tier, run.results, now)
             store.save_run_stats(run.tier, funnel.stats(run), now)
-        if run.tier == "coverage" and not run.outage:
-            coverage.record_holder_snapshots(store, run, now, cfg["coverage"]["holder_snapshot_hours"])
     store.commit()
     recorded = track_record.update(store, jup, now, cfg["track_record"])
 
     for run in runs:
         if run.tier == "new_launches":
             print_tier_run(run_id, run, cfg)
+        elif run.tier == "coverage":
+            print_coverage_run(run)
         else:
             print_jupiter_tier_run(run)
     print_events(events, {t: len(store.current_members(t)) for t in ALL_TIERS})
     print(f"Track record snapshots recorded this run: {recorded}")
     store.close()
-    cmd_charts(cfg)
+    if set(tiers) - {"coverage"}:   # the coverage list's 7-day lines come with its CoinGecko data
+        cmd_charts(cfg)
+
+
+def coingecko_client(cfg):
+    api = cfg["api"]
+    return CoinGecko(api["coingecko_base"], api["timeout_s"], api["coingecko_min_interval_s"], api["retries"],
+                     backoff_s=api["coingecko_backoff_s"])
 
 
 def cmd_charts(cfg, max_calls=None):
@@ -141,15 +150,14 @@ def cmd_profiles(cfg, max_per_run=None):
     if not cands:
         print("No coverage run stored yet - run `python sieve.py run` first.")
         return store.close()
-    cg = CoinGecko(api["coingecko_base"], api["timeout_s"], api["coingecko_min_interval_s"], api["retries"],
-                   backoff_s=api["coingecko_backoff_s"])
-    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
     logo_dir = cfg["storage"]["logo_dir"]
     print(f"Profiles: {len(cands)} candidates; CoinGecko lookups are ~{api['coingecko_min_interval_s']} s apart...")
-    st = profiles.update(store, cfg, list(cands), cands, cg, dex, time.time(),
-                         cache_logo=lambda url: logos.fetch_logo(url, logo_dir) is not None)
-    print(f"Profiles: {st['done']} updated of {st['due']} due, CoinGecko failed for {st['coingecko_failed']}"
-          f" (old CoinGecko data kept), logos cached {st['logos']}. Run `python sieve.py run` to apply them.")
+    dex = DexScreener(api["dexscreener_base"], api["timeout_s"], api["dexscreener_min_interval_s"], api["retries"])
+    st = profiles.update(store, cfg, list(cands), cands, coingecko_client(cfg), time.time(),
+                         cache_logo=lambda url: logos.fetch_logo(url, logo_dir) is not None, dex=dex)
+    print(f"Profiles: {st['done']} updated of {st['due']} due, {st['age_checks']} age checks, CoinGecko failed for "
+          f"{st['coingecko_failed']}" + (" (stopped on rate limit; the rest are due next run)" if st["rate_limited"] else "")
+          + f", logos cached {st['logos']}. Run `python sieve.py run` to apply them.")
     store.close()
 
 
@@ -158,9 +166,7 @@ def cmd_history(cfg, max_calls=None):
     api = cfg["api"]
     store = Store(cfg["storage"]["db_path"])
     try:
-        cg = CoinGecko(api["coingecko_base"], api["timeout_s"], api["coingecko_min_interval_s"], api["retries"],
-                       backoff_s=api["coingecko_backoff_s"])
-        st = history.fetch(store, cfg, cg, list(store.current_members("coverage")), time.time(), max_calls)
+        st = history.fetch(store, cfg, coingecko_client(cfg), list(store.current_members("coverage")), time.time(), max_calls)
         print(f"Price history: {st['fetched']} updated, {st['failed']} failed (of {st['planned']} due)"
               + (" - stopped on CoinGecko rate limit, cached series kept" if st["rate_limited"] else ""))
     finally:
@@ -202,10 +208,12 @@ def cmd_holders(cfg, force=False):
     api = cfg["api"]
     store = Store(cfg["storage"]["db_path"])
     cands = coverage_candidates(store, cfg)
+    mints = holders.solana_mints(store.profiles(CG_CHAIN, list(cands)))
     rug = RugCheck(api["rugcheck_base"], api["timeout_s"], api["rugcheck_min_interval_s"], api["retries"])
     rpc = SolanaRPC(api["solana_rpc_url"], api["timeout_s"], api["solana_rpc_min_interval_s"], api["retries"])
-    st = holders.update(store, cfg, list(cands), rug, rpc, time.time(), force)
-    print(f"Holders: {st['done']} updated of {st['due']} due, {st['failed']} failed (old reports kept).")
+    st = holders.update(store, cfg, mints, rug, rpc, time.time(), force)
+    print(f"Holders: {len(mints)} of {len(cands)} candidates are issued on Solana; {st['done']} updated of {st['due']} due,"
+          f" {st['failed']} failed (old reports kept).")
     store.close()
 
 
@@ -447,9 +455,9 @@ def main():
     p_run = sub.add_parser("run", help="evaluate tiers (default command)")
     p_run.add_argument("--tiers", default=",".join(DEFAULT_TIERS),
                        help=f"comma-separated subset of {','.join(ALL_TIERS)} (default: coverage)")
-    p_prof = sub.add_parser("profiles", help="links, native check, supply and logos for the coverage list (daily)")
+    p_prof = sub.add_parser("profiles", help="links, contracts, exchanges, age and logos for the coverage list (daily)")
     p_prof.add_argument("--max", type=int, default=None, help="max tokens this run (default: profiles.max_per_run)")
-    p_hold = sub.add_parser("holders", help="top-holder analysis for the coverage list (daily)")
+    p_hold = sub.add_parser("holders", help="top-holder analysis for Solana-issued tokens on the coverage list (daily)")
     p_hold.add_argument("--force", action="store_true", help="refresh every token, not only those due")
     p_dig = sub.add_parser("digest", help="build a Telegram digest")
     p_dig.add_argument("kind", choices=["daily", "weekly", "alerts"])

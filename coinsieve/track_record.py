@@ -17,6 +17,8 @@ def update(store, jup, now, tr):
     done = store.recorded_checkpoints()
     due = []
     for e in store.tier_entries(since=now - (max_h + tr["catch_up_hours"]) * 3600):
+        if e["tier"] == "coverage":   # the coverage list is keyed by CoinGecko id; Jupiter can't look it up
+            continue
         for name, hours in checkpoints.items():
             key = (e["address"], e["tier"], e["entered_at"], name)
             target = e["entered_at"] + hours * 3600

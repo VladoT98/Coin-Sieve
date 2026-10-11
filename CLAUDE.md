@@ -2,7 +2,7 @@
 
 ## Goal (v2)
 A Solana token screener product, aiming for revenue:
-1. **Website** with 3 tabs: **New Launches | Emerging | Established**. Solana-native tokens only (no wrapped/bridged tokens, no stablecoins). Tier names describe age/liquidity — never "risk", "reward" or "picks".
+1. **Website** (v3, user decision 2026-10-11): one "Tokens" list of established tokens from **every blockchain** (CoinGecko), not Solana only. No stablecoins, wrapped/bridged/staked copies or tokenised assets; meme and exchange tokens stay. Never "risk", "reward", "picks" or quality words — criteria are objective (age, size, volume, markets, docs). The v2 tier tabs below now exist only in Telegram (Solana, Jupiter).
 2. **Telegram channel** linking to the website: daily New Launches digest; weekly digest of tier changes (entered / left / graduated) + track record; ad-hoc Established events.
 3. **Later:** paid tier on the website selling features (alerts, filters, history), not picks.
 
@@ -31,7 +31,7 @@ A Solana token screener product, aiming for revenue:
 - Dry-run mode by default: print to console, only post to Telegram when --post is passed. Post to the TEST channel until the user approves switching to the main channel.
 
 ## Commands
-- **v3 (pivot in progress, Stage B):** `python sieve.py run` now defaults to `--tiers coverage` (the one "Tokens" list, criteria in config `coverage:`; other tiers only when named). `python sieve.py profiles [--max N]` (links, Solana-native check via CoinGecko, supply, logo cache; daily, ~1 min/token because of CoinGecko spacing) and `python sieve.py holders [--force]` (RugCheck top 20 + Solana RPC owner programs; daily). Order on a fresh DB: `run` → `profiles` + `holders` → `run`. The website reads only from the DB/logo cache (market strip thread is the exception until Stage E). All site texts live in `coinsieve/site_text.yaml`. Lines below describe the v2 screener and are rewritten in Stage G.
+- **v3 multi-chain (branch `multichain`, 2026-10-11):** `python sieve.py run` defaults to `--tiers coverage`: universe = CoinGecko `coins/markets` down to `coverage.scope_min_mcap_usd`; criteria = not in `coverage.exclude_categories`, mcap, 24h volume, age lower bound, `min_exchanges`, website/docs. Tokens are keyed by **CoinGecko id** (store key space `coingecko.CHAIN = "coingecko"`, URLs `#/token/<id>`); old Solana-mint members are closed once without events. The table's 7-day line comes from the same markets call (`sparkline_in_7d`; no GeckoTerminal for coverage). `python sieve.py profiles [--max N]` (CoinGecko `coins/{id}` with tickers + DexScreener info fallback for links + homepage scan + 1-year chart when age is unproven; daily, ~25 tokens/run) and `python sieve.py holders [--force]` (Solana-issued tokens only: RugCheck top 20 + Solana RPC; daily). Order on a fresh DB: `run` → `profiles` + `holders` → `run`. The website reads only from the DB/logo cache (market strip thread is the exception until Stage E). All site texts live in `coinsieve/site_text.yaml`. Lines below describe the v2 screener and are rewritten in Stage G.
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).
 - `python sieve.py telegram-check` — one test line to the TEST chat.
@@ -54,6 +54,13 @@ A Solana token screener product, aiming for revenue:
 - Stage 8: static website (Jinja2 → `site/`), hosting chosen then.
 - Stage 9: scheduling on an always-on host; switch to main channel after approval.
 - Later: paid tier.
+
+## Verified API facts (CoinGecko multi-chain, 2026-10-11) — details in `coinsieve/coingecko.py`
+- `coins/markets` 250/page: price, 1h/24h/7d %, mcap, rank, FDV, volume, supplies, `ath_date`/`atl_date`, `sparkline_in_7d.price` (168 hourly, no timestamps; ends at `last_updated`). No liquidity, no holders, no buy/sell split. Rank 250 ≈ $128M, rank 500 ≈ $50M; 296 coins ≥ $100M before exclusions.
+- `coins/{id}?tickers=true`: `asset_platform_id` (null = coin of its own chain, e.g. zcash, bitcoin, BNB), `platforms` (`{"": ""}` for own-chain), `genesis_date` (often null), links (homepage can be EMPTY, e.g. JUP → DexScreener fallback), first 100 tickers (`trust_score` null keyless).
+- Category ids: `real-world-assets-rwa` contains chainlink/stellar/ondo-finance → NOT used; `tokenized-products` = only tokenised funds/gold/xStocks. `bridged-tokens` also tags spx6900.
+- DexScreener `tokens/v1/{chain}/{addr}` works for solana, ethereum, bsc, base, arbitrum, polygon, avalanche, optimism, sui, tron; returns EVM addresses checksummed (CoinGecko: lowercase).
+- Keyless CoinGecko: 429 after ~5 quick calls → 20 s spacing. A first `run` takes ~3 min (7 category lists, cached 24h), later runs ~1 min. CoinGecko terms: "Powered by CoinGecko" attribution required (shown next to the disclaimer).
 
 ## Verified API facts (DexScreener, 2026-10-07)
 - Discovery feeds (`token-profiles/latest/v1`, `token-boosts/latest/v1`, `token-boosts/top/v1`, `community-takeovers/latest/v1`) return only the ~30 newest entries, mixed chains (`chainId`, `tokenAddress`). Measured turnover: 6 new Solana tokens in 5 min (~70/h); profiles feed's ~24 Solana entries span ~30 min → poll every ≤15 min; store accumulates candidates across runs (SQLite, `data/coinsieve.db`).

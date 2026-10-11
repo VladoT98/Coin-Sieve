@@ -3,19 +3,24 @@
 
 chain: solana
 
-# ---- v3 coverage list: the established tokens profiled on the website ("Tokens") ----
-# Jupiter universe (lists under `jupiter:`), same exclusions (jupiter.exclude_tags / exclude_mints).
+# ---- coverage list: the established tokens profiled on the website ("Tokens"), every blockchain ----
+# Universe = CoinGecko coins/markets, largest market cap first (user decision 2026-10-11: multi-chain, >= $100M,
+# exclude stablecoins / wrapped / bridged / staked copies and tokenised assets; meme tokens and exchange tokens stay).
 coverage:
   leave_after_hours: 48            # a covered token must miss a criterion this long before it leaves the list
-  min_age_days: 365                # Jupiter firstPool.createdAt
-  scope_min_mcap_usd: 10000000     # below this, tokens are only counted (not evaluated or logged)
-  min_mcap_usd: 20000000
-  min_liquidity_usd: 500000
-  require_native_chain: true       # CoinGecko asset_platform_id == native_platform and no excluded category
-  native_platform: solana
-  exclude_cg_categories: [Bridged-Tokens, Wrapped-Tokens]   # "Bridged-Tokens" seen on ETH (Wormhole) and SPX
+  min_age_days: 365                # lower bound from CoinGecko price history (ATH/ATL dates, genesis date, 1y chart)
+  scope_min_mcap_usd: 50000000     # below this, tokens are only counted (not evaluated or logged)
+  min_mcap_usd: 100000000
+  min_volume_h24_usd: 500000       # starting guess: removes tokens that barely trade
+  min_exchanges: 3                 # distinct markets (CEX + DEX) among CoinGecko's first 100 tickers; starting guess
+  markets_pages_max: 4             # coins/markets pages of 250 per refresh (stops early below scope_min_mcap_usd)
+  # CoinGecko category ids (checked against coins/categories/list 2026-10-11). Not `real-world-assets-rwa`:
+  # it also holds protocol tokens (chainlink, stellar, ondo-finance). Side effect seen: SPX6900 is tagged bridged.
+  exclude_categories: [stablecoins, yield-bearing-stablecoins, wrapped-tokens, bridged-tokens, liquid-staking-tokens,
+                       liquid-restaking-tokens, tokenized-products]
+  exclude_ids: []                  # CoinGecko ids excluded by hand
+  categories_refresh_hours: 24
   require_website_or_docs: true    # from the profiles job (website / whitepaper / docs link found)
-  holder_snapshot_hours: 6         # Jupiter holder count stored at most this often (holder history)
   stale_after_minutes: 120         # the list is marked stale when the last refresh is older
 
 site:                              # website Tokens table (visitors' column choice is kept in their browser only)
@@ -55,15 +60,15 @@ facts:                             # "Points to check" on the token page: shown 
   holders_drop_pct: 5              # holder count fell at least this % ...
   holders_drop_days: 7             # ... over this many days (needs that much history)
 
-profiles:                          # `python sieve.py profiles` — links, native check, supply, logos
+profiles:                          # `python sieve.py profiles` — links, contracts, exchanges, age, logos
   refresh_hours: 24
-  max_per_run: 60                  # CoinGecko lookups are ~20 s apart -> ~20 min for 60 tokens
+  max_per_run: 25                  # CoinGecko lookups are ~20 s apart (+ homepage checks) -> ~10-15 min per run
   max_candidates: 8                # whitepaper/docs URLs checked per token
   fetch_timeout_s: 10              # per page (homepages, docs, whitepapers)
   max_html_bytes: 2000000
   max_pdf_probe_bytes: 65536       # enough to recognise a PDF; full download happens for AI summaries only
 
-holders:                           # `python sieve.py holders` — RugCheck top 20 + owner programs (Solana RPC)
+holders:                           # `python sieve.py holders` — Solana-issued tokens only: RugCheck top 20 + owner programs (Solana RPC)
   refresh_hours: 24
   exclude_kinds: [pool, locker, contract, exchange]   # left out of "Top 10 holders (excl.)"
   # Exchange wallets: owner address -> {name, source}. Add only with a public source per address. Empty = none identified.
@@ -274,7 +279,7 @@ charts:                       # dashboard price sparklines (GeckoTerminal hourly
     new_launches: 30
     emerging: 120
     established: 240
-  tier_order: [coverage]      # tiers whose tokens get charts, in priority order (the site shows coverage only)
+  tier_order: [new_launches, emerging, established]   # GeckoTerminal charts (Telegram tiers); coverage lines come from CoinGecko
   max_calls_per_run: 40       # OHLCV calls at the end of each `run` (~7 s apart -> ~5 min)
   include_failing: false      # failing tokens are fetched only after they were viewed on the dashboard
   demand_window_minutes: 30   # rows shown on the dashboard this recently are fetched first

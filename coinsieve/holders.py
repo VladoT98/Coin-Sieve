@@ -8,13 +8,20 @@ the curated `holders.exchange_wallets` config list (each entry needs a source) â
 
 Kinds: pool, locker, contract, exchange, wallet (unlabelled â€” can be a person, a team multisig or an exchange
 we can't identify). The kinds in `holders.exclude_kinds` are left out of "top 10 (excl.)".
+
+Only tokens issued on Solana (CoinGecko asset_platform_id "solana") have holder data; other chains would need a
+paid explorer API per chain. Reports are stored under the CoinGecko id (store key space coingecko.CHAIN).
 """
 import logging
+import re
 
+from coinsieve.coingecko import CHAIN
 from coinsieve.rugcheck import _pool_accounts
 from coinsieve.solana_rpc import SYSTEM_PROGRAM
 
 log = logging.getLogger(__name__)
+
+SOLANA_MINT = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 
 # Owner accounts held by these programs are not contracts holding tokens (seen 2026-10-09: RugCheck reports some
 # owners that are themselves token accounts) -> treated as unidentified.
@@ -79,15 +86,27 @@ def analyse(report, accounts, hcfg):
     }
 
 
-def update(store, cfg, addresses, rug, rpc, now, force=False):
-    """Fetch + analyse holders for the due addresses. Returns {"done", "failed"}. A failure keeps the old report."""
-    chain, hcfg = cfg["chain"], cfg["holders"]
-    old = store.holder_reports(chain, addresses)
-    due = [a for a in addresses if force or a not in old or now - old[a]["ts"] >= hcfg["refresh_hours"] * 3600]
+def solana_mints(profiles):
+    """{coin id: Solana mint} for tokens issued on Solana, from stored profiles."""
+    out = {}
+    for cid, prof in profiles.items():
+        cg = (prof.get("data") or {}).get("coingecko") or {}
+        mint = (cg.get("platforms") or {}).get("solana")
+        if cg.get("platform") == "solana" and isinstance(mint, str) and SOLANA_MINT.match(mint):
+            out[cid] = mint
+    return out
+
+
+def update(store, cfg, mints, rug, rpc, now, force=False):
+    """Fetch + analyse holders. mints = {coin id: Solana mint}. Returns {"done", "failed"}. A failure keeps the old
+    report."""
+    chain, hcfg = CHAIN, cfg["holders"]
+    old = store.holder_reports(chain, list(mints))
+    due = [a for a in mints if force or a not in old or now - old[a]["ts"] >= hcfg["refresh_hours"] * 3600]
     stats = {"due": len(due), "done": 0, "failed": 0}
     for addr in due:
         try:
-            report = rug.report(addr)
+            report = rug.report(mints[addr])
             if not report.get("topHolders"):
                 raise ValueError("RugCheck report has no topHolders")
             accounts = rpc.account_owners(owners_of(report))

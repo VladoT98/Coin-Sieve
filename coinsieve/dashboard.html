@@ -305,7 +305,25 @@
 
 <script>
 "use strict";
-const ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;   // Solana account (holder wallets)
+const TID = /^[a-z0-9][a-z0-9-]{0,99}$/;        // covered token = CoinGecko coin id (URLs, logos, token files)
+const EVM = /^0x[0-9a-fA-F]{40}$/;
+// CoinGecko platform id -> [badge, explorer token URL prefix, address check]. Unknown platforms show a shortened id, no link.
+const CHAINS = {
+  ethereum: ["ETH", "https://etherscan.io/token/", EVM], solana: ["SOL", "https://solscan.io/token/", ADDR],
+  "binance-smart-chain": ["BNB", "https://bscscan.com/token/", EVM], base: ["BASE", "https://basescan.org/token/", EVM],
+  "arbitrum-one": ["ARB", "https://arbiscan.io/token/", EVM], "polygon-pos": ["POL", "https://polygonscan.com/token/", EVM],
+  "optimistic-ethereum": ["OP", "https://optimistic.etherscan.io/token/", EVM], avalanche: ["AVAX", "https://snowtrace.io/token/", EVM],
+  tron: ["TRX", null, null], sui: ["SUI", null, null], "the-open-network": ["TON", null, null], hyperliquid: ["HYPE", null, null],
+  "near-protocol": ["NEAR", null, null], aptos: ["APT", null, null], "hedera-hashgraph": ["HBAR", null, null], stellar: ["XLM", null, null],
+};
+function chainBadge(p) { return p ? (CHAINS[p] ? CHAINS[p][0] : p.replace(/-/g, " ").slice(0, 8).toUpperCase()) : null; }
+function explorerUrl(p, addr) { const c = CHAINS[p]; return c && c[1] && c[2] && c[2].test(addr) ? c[1] + addr : null; }
+function chainEl(t) {  // badge next to the symbol: issuing chain, or "own chain" for the coin of its own blockchain
+  if (!profiled(t)) return null;
+  const b = el("span", "chain", t.platform ? chainBadge(t.platform) : T.table.own_chain);
+  b.title = t.platform ? fill(T.table.chain_tip, { chain: t.platform }) : T.table.own_chain_tip; return b;
+}
 const ROW_H = 44, HEAD_H = 36;
 const COUNTS = ["ok", "blocked", "error", "listed"];   // link statuses that mean "the project lists this link"
 const ICONS = {  // Lucide-style strokes, static markup only
@@ -323,7 +341,7 @@ function icon(key, size) {
 let S = null, T = null;                       // state from /api/state, texts (site_text.yaml)
 let route = { name: "tokens", anchor: null };
 let view = "covered", query = "", sortKey = null, sortDir = 1, page = 0, pageSize = 10, selected = null, rightTab = "filters";
-const DEF = { maxTop10: null, minMcap: null, minHolders: null, website: false, whitepaper: false, docs: false, github: false, x: false };
+const DEF = { maxTop10: null, minMcap: null, website: false, whitepaper: false, docs: false, github: false, x: false };
 let F = { ...DEF };                            // visitor filters: client-side only, never saved
 let edited = null, whatIf = null, impact = {}, evalTimer = null;   // admin: coverage criteria what-if
 
@@ -354,7 +372,7 @@ const STATIC = !!window.CS_STATIC;
 const STATIC_FILES = { "/api/state": "api/state.json", "/api/market": "api/market.json" };
 async function api(path, body) {
   if (STATIC) {
-    const file = STATIC_FILES[path] || (path.startsWith("/api/token/") && ADDR.test(path.slice(11)) ? "api/token/" + path.slice(11) + ".json" : null);
+    const file = STATIC_FILES[path] || (path.startsWith("/api/token/") && TID.test(path.slice(11)) ? "api/token/" + path.slice(11) + ".json" : null);
     if (body || !file) throw new Error("read-only site");
     const r = await fetch(file + "?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" });
     if (!r.ok) throw new Error(r.statusText); return r.json();
@@ -376,8 +394,12 @@ function hue(addr) { let h = 0; for (const c of addr) h = (h * 31 + c.charCodeAt
 function coin(t, cls) {
   const m = t.metrics, c = el("span", cls, (m.symbol || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase() || "?");
   c.style.background = `hsl(${hue(m.address)} 45% 62%)`;
-  if (t.logo && ADDR.test(m.address)) { const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = (STATIC ? "logos/" : "/api/logo/") + m.address + (STATIC ? ".png" : ""); img.onerror = () => img.remove(); c.append(img); }
+  if (t.logo && TID.test(m.address)) { const img = el("img"); img.alt = ""; img.loading = "lazy"; img.src = (STATIC ? "logos/" : "/api/logo/") + m.address + (STATIC ? ".png" : ""); img.onerror = () => img.remove(); c.append(img); }
   return c;
+}
+function discEl() {  // disclaimer + the data attribution CoinGecko's API terms require on every page
+  const d = el("div", "disc", T.disclaimer + " "), a = el("a", null, T.attribution); a.href = "https://www.coingecko.com/";
+  a.target = "_blank"; a.rel = "noopener noreferrer"; d.append(a); return d;
 }
 function two(main, sub, mainCls = "", subCls = "sub") { const d = el("div", "two"); d.append(el("span", mainCls, main), el("span", subCls, sub)); return d; }
 
@@ -401,7 +423,7 @@ function circPct(t) { const c = t.metrics.circ_supply, d = maxSupply(t) ?? t.met
 const COLS = [
   { key: "token", group: null, w: 20, get: (t) => (t.metrics.symbol || "").toLowerCase(), cell: (t) => {
       const m = t.metrics, row = el("div", "tokcell"), d = el("div", "two"), top = el("span");
-      top.append(el("span", "sym", m.symbol || "?"), el("span", "chain", "SOL"));
+      top.append(el("span", "sym", m.symbol || "?")); const cb = chainEl(t); if (cb) top.append(cb);
       let sub = m.name || "";
       if (view === "outside") { const r = res(t), bad = (r.checks || []).find((c) => !c.info && c.ok !== true); if (bad) sub = (bad.ok === false ? "✕ " : "? ") + bad.label; }
       d.append(top, el("span", "sub" + (view === "outside" ? " miss" : ""), sub)); row.append(coin(t, "coin"), d); return row; } },
@@ -425,19 +447,15 @@ const COLS = [
       if (!h || h.top10_excl_pct == null) { td.title = T.table.no_holder_data; return el("span", "sub", "–"); }
       td.title = fill(T.table.top10_tip, { excl: pct(h.top10_excl_pct), all: pct(h.top10_all_pct), out: pct(h.excluded_pct) }) + (h.complete ? "" : "\n" + T.table.incomplete);
       return el("span", null, (h.complete ? "" : "≥") + pct(h.top10_excl_pct)); } },
-  { key: "holders", group: "holders", w: 9, r: 1, num: 1, get: (t) => t.metrics.holders, cell: (t) => el("span", null, compact(t.metrics.holders)) },
-  { key: "holder_change", group: "holders", w: 8, r: 1, num: 1, get: (t) => t.metrics.holder_change_24h_pct, cell: (t) => {
-      const v = t.metrics.holder_change_24h_pct; return el("span", tone(v, 1), signed(v, 1, "%")); } },
   // admin: hidden in public mode while unlocks.public is false (DefiLlama terms not cleared)
   { key: "unlock", group: "unlocks", admin: 1, w: 9, r: 1, get: () => null, cell: (t, td) => { td.title = T.filters.unlock_unavailable; return two("–", T.table.no_unlock); } },
   { key: "fdv", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.fdv_usd, cell: (t) => el("span", null, usd(t.metrics.fdv_usd)) },
-  { key: "liquidity", group: "market", w: 9, r: 1, num: 1, get: (t) => t.metrics.liquidity_usd, cell: (t) => el("span", null, usd(t.metrics.liquidity_usd)) },
   { key: "circ_supply", group: "supply", w: 11, r: 1, num: 1, get: (t) => t.metrics.circ_supply, cell: (t) => el("span", null, t.metrics.circ_supply == null ? "–" : compact(t.metrics.circ_supply) + " " + (t.metrics.symbol || "")) },
   { key: "max_supply", group: "supply", w: 9, r: 1, num: 1, get: maxSupply, cell: (t) => el("span", null, compact(maxSupply(t))) },
   { key: "circ_pct", group: "supply", w: 9, r: 1, num: 1, get: circPct, cell: (t) => el("span", null, pct(circPct(t))) },
   { key: "volume", group: "activity", w: 11, r: 1, num: 1, get: (t) => t.metrics.volume_h24_usd, cell: (t) => el("span", null, usd(t.metrics.volume_h24_usd)) },
-  { key: "bought_sold", group: "activity", w: 10, r: 1, num: 1, get: (t) => t.metrics.bought_usd_h24, cell: (t) => {
-      const b = t.metrics.bought_usd_h24, s = t.metrics.sold_usd_h24; return b == null && s == null ? el("span", "sub", "–") : two(usd(b ?? 0), usd(s ?? 0), "bo", "so"); } },
+  { key: "exchanges", group: "activity", w: 8, r: 1, num: 1, get: (t) => t.metrics.exchanges, cell: (t) => el("span", null, num(t.metrics.exchanges)) },
+  { key: "rank", group: "market", w: 6, r: 1, num: 1, get: (t) => t.metrics.rank, cell: (t) => el("span", null, t.metrics.rank == null ? "–" : "#" + t.metrics.rank) },
   { key: "age", group: "project", w: 7, r: 1, num: 1, get: (t) => t.metrics.age_d, cell: (t) => el("span", null, t.metrics.age_d == null ? "–" : num(t.metrics.age_d) + "d") },
   { key: "docs", group: "project", w: 12, get: docsScore, cell: (t) => {
       const d = el("span", "doc");
@@ -580,7 +598,7 @@ async function loadMarket() {
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, "").split("/");
   route = h[0] === "methodology" ? { name: "methodology", anchor: h[1] || null }
-    : h[0] === "token" && ADDR.test(h[2] || "") ? { name: "token", chain: h[1], address: h[2] } : { name: "tokens", anchor: null };
+    : h[0] === "token" && TID.test(h[1] || "") ? { name: "token", address: h[1] } : { name: "tokens", anchor: null };
 }
 addEventListener("hashchange", () => { parseRoute(); hideTip(); renderAll(); });
 function renderNav() {
@@ -604,10 +622,9 @@ function renderTokensView() {
       const b = el("button", view === k ? "on" : "", l); b.onclick = () => { view = k; page = 0; selected = null; renderTokensView(); renderRight(); }; tf.append(b); }
     bar.append(tf, el("div", "sep"));
   }
-  const chips = el("div", "chips"), lim = F.maxTop10 ?? 30;
+  const chips = el("div", "chips");
   const chip = (text, on, click, disabled, title) => { const c = el("button", "chip" + (on ? " on" : ""), text); c.setAttribute("aria-pressed", on ? "true" : "false");
     c.disabled = !!disabled; if (title) c.title = title; c.onclick = click; chips.append(c); };
-  chip(fill(T.filters.chip_top10, { n: lim }), F.maxTop10 != null, () => { F.maxTop10 = F.maxTop10 == null ? 30 : null; filtersChanged(); });
   chip(T.filters.chip_whitepaper, F.whitepaper, () => { F.whitepaper = !F.whitepaper; filtersChanged(); });
   if (availableCols().includes("unlock")) chip(T.filters.chip_unlock, false, null, true, T.filters.unlock_unavailable);
   const search = el("label", "search"), inp = el("input"); inp.id = "search"; inp.placeholder = T.table.search; inp.setAttribute("aria-label", T.table.search);
@@ -620,7 +637,7 @@ function renderTokensView() {
   const table = el("table", "list"), cg = el("colgroup"); cg.id = "cols"; const th = el("thead"); th.id = "thead"; const tb = el("tbody"); tb.id = "tbody";
   table.append(cg, th, tb); wrap.append(table);
   const pager = el("div", "pager"); pager.id = "pager";
-  center.append(bar, wrap, pager, el("div", "disc", T.disclaimer));
+  center.append(bar, wrap, pager, discEl());
   ro.disconnect(); ro.observe(wrap);
   renderTable();
 }
@@ -630,7 +647,6 @@ function passesFilters(t) {
   if (F.maxTop10 != null) {  // unknown or only a lower bound ("≥") can't be confirmed below the limit -> hidden
     const h = t.holders; if (!h || h.top10_excl_pct == null || !h.complete || h.top10_excl_pct >= F.maxTop10) return false; }
   if (F.minMcap != null && !((m.mcap_usd ?? -1) >= F.minMcap)) return false;
-  if (F.minHolders != null && !((m.holders ?? -1) >= F.minHolders)) return false;
   for (const k of ["website", "whitepaper", "docs", "github", "x"]) if (F[k] && !linkOk(t, k)) return false;
   return true;
 }
@@ -653,7 +669,7 @@ function renderTable() {
   const frag = document.createDocumentFragment();
   for (const t of rows.slice(page * pageSize, (page + 1) * pageSize)) {
     const row = el("tr", t.metrics.address === selected ? "sel" : ""); row.tabIndex = 0;
-    const pick = () => { selected = t.metrics.address; location.hash = "#/token/" + S.chain + "/" + t.metrics.address; };
+    const pick = () => { selected = t.metrics.address; location.hash = "#/token/" + t.metrics.address; };
     row.onclick = pick; row.onkeydown = (e) => { if (e.key === "Enter") pick(); };
     for (const c of cols) { const td = el("td", (c.r ? "r " : "") + (c.num ? "num" : "")); td.append(c.cell(t, td)); row.append(td); }
     frag.append(row);
@@ -734,10 +750,10 @@ function criteriaRows() {
   const c = S.criteria, mt = T.methodology, ck = T.checks;
   const req = (v) => v ? mt.required : mt.not_required;
   return [[ck.age.label, fill(mt.min_days, { n: num(c["coverage.min_age_days"]) })],
-          [ck.type.label, fill(mt.excluded, { tags: S.exclude_tags.join(", ") })],
+          [ck.type.label, fill(mt.excluded, { cats: S.exclude_categories.join(", ") })],
           [ck.mcap.label, fill(mt.or_more, { v: usd(c["coverage.min_mcap_usd"]) })],
-          [ck.liquidity.label, fill(mt.or_more, { v: usd(c["coverage.min_liquidity_usd"]) })],
-          [ck.native.label, req(c["coverage.require_native_chain"])],
+          [ck.volume.label, fill(mt.or_more, { v: usd(c["coverage.min_volume_h24_usd"]) })],
+          [ck.exchanges.label, fill(mt.min_markets, { n: num(c["coverage.min_exchanges"]) })],
           [ck.links.label, req(c["coverage.require_website_or_docs"])],
           [mt.grace, fill(mt.grace_value, { n: num(c["coverage.leave_after_hours"]) })]];
 }
@@ -760,7 +776,7 @@ function renderMethodology() {
     if (s.table === "sources") inner.append(kvTable([mt.source, mt.provides, mt.cadence, mt.last],
       T.sources.map((x) => [x.name, x.what, x.cadence, S.sources[x.key] ? fill(mt.ago, { ago: ago(S.sources[x.key]) }) : mt.never])));
   }
-  art.append(inner); center.append(art, el("div", "disc", T.disclaimer));
+  art.append(inner); center.append(art, discEl());
   if (route.anchor) { const h = $("m-" + route.anchor); if (h) { h.scrollIntoView({ block: "start" }); h.classList.add("flash"); h.focus({ preventScroll: true }); } }
 }
 
@@ -797,12 +813,10 @@ function pointRows() {
   return [[T.points.top10.replace("{pct}", "…"), fill(mt.pt_top10, { n: f.top10_pct })],
           [T.points.contracts.split(". ")[0].replace("{pct}", "…") + ".", fill(mt.pt_contracts, { n: f.contracts_pct })],
           [T.points.circulating.split(". ")[0].replace(/\{pct\}|\{of\}/g, "…") + ".", fill(mt.pt_circulating, { n: f.circulating_below_pct })],
-          [T.points.mint, mt.pt_mint], [T.points.freeze, mt.pt_freeze], [T.points.no_docs, mt.pt_no_docs],
-          [T.points.liquidity.split(". ")[0].replace(/\{liq\}|\{pct\}/g, "…") + ".", fill(mt.pt_liquidity, { n: f.liquidity_below_pct_of_mcap })],
-          [T.points.holders_down.replace(/\{pct\}|\{days\}/g, "…"), fill(mt.pt_holders_down, { n: f.holders_drop_pct, d: f.holders_drop_days })]];
+          [T.points.mint, mt.pt_mint], [T.points.freeze, mt.pt_freeze], [T.points.no_docs, mt.pt_no_docs]];
 }
 
-// ---- token page (#/token/<chain>/<address>) -------------------------------------------------------------
+// ---- token page (#/token/<coingecko id>) ------------------------------------------------------------------
 const details = {};                       // address -> token page data (or null when missing)
 let chartMode = "price", chartRange = "1M", chartRO = null, holdersAll = false;
 const shortAddr = (a) => a.slice(0, 4) + "…" + a.slice(-4);
@@ -900,7 +914,7 @@ function chartCard(t, d) {
 function low24(d) { const r = rangePoints(d, "24h"); if (!r || r.pts.length < 2) return null; const v = r.pts.map((p) => p[1]); return [Math.min(...v), Math.max(...v)]; }
 function holdersCard(t, d) {
   const tp = T.token_page, card = el("div", "card"), h = t.holders; card.append(el("h3", null, tp.holders_title));
-  if (!h) { card.append(el("div", "pintro", T.panel.no_holders)); return card; }
+  if (!h) { card.append(el("div", "pintro", t.platform === "solana" ? T.panel.no_holders : T.panel.holders_solana_only)); return card; }
   const ex = h.excluded_pct || 0, top = h.top10_excl_pct || 0, rest = Math.max(0, 100 - ex - top);
   card.append(el("div", "pintro", tp.concentration));
   const bar = el("div", "conc"); for (const [cls, v] of [["x", ex], ["t", top], ["r", rest]]) { const sp = el("span", cls); sp.style.width = v + "%"; bar.append(sp); }
@@ -916,12 +930,6 @@ function holdersCard(t, d) {
     tr.append(el("td", "m", String(i + 1)), w, el("td", null, r.label || T.holder_kinds[r.kind] || r.kind), el("td", "r m", pct(r.pct))); tb.append(tr); });
   tbl.append(thead, tb); card.append(el("h3", null, tp.top_holders), tbl);
   if ((h.holders || []).length > 10) { const b = el("button", "linkbtn", holdersAll ? tp.show_less : tp.show_all); b.onclick = () => { holdersAll = !holdersAll; card.replaceWith(holdersCard(t, d)); }; card.append(b); }
-  const hist = (d && d.holder_history) || [], hc = el("div", "hcount");
-  hc.append(el("span", null, tp.holder_count), el("b", null, compact(t.metrics.holders)));
-  if (hist.length) hc.append(el("span", null, fill(tp.history_since, { date: new Date(hist[0][0] * 1000).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) })));
-  if (hist.length >= 2) { const vs = hist.map((p) => p[1]), mn = Math.min(...vs), mx = Math.max(...vs), s2 = svgEl("svg", { width: 120, height: 28, viewBox: "0 0 120 28" });
-    svgEl("polyline", { fill: "none", stroke: "var(--blue)", "stroke-width": 1.5, points: hist.map((p, i) => `${(i / (hist.length - 1) * 118 + 1).toFixed(1)},${(26 - (p[1] - mn) / (mx - mn || 1) * 24).toFixed(1)}`).join(" ") }, s2); hc.append(s2); }
-  card.append(hc);
   return card;
 }
 function aboutCard(t, d) {  // AI summary: only text that passed the server-side checks; rendered as plain text
@@ -954,29 +962,36 @@ async function renderTokenPage() {
   const back = el("a", "back", tp.back); back.href = "#/tokens";
   const covered = S.tokens.filter((x) => x.member).sort((a, b) => (b.metrics.mcap_usd || 0) - (a.metrics.mcap_usd || 0));
   const rank = covered.findIndex((x) => x.metrics.address === addr) + 1;
-  const head = el("div", "thead"), nm = el("div", "nm2", m.name || m.symbol || "?"); nm.append(el("span", "sb", m.symbol || ""), el("span", "chain", "SOL"));
+  const head = el("div", "thead"), nm = el("div", "nm2", m.name || m.symbol || "?"); nm.append(el("span", "sb", m.symbol || "")); const cb = chainEl(t); if (cb) nm.append(cb);
   if (rank) { const rk = el("span", "rank", "#" + rank); rk.title = tp.rank_tip; nm.append(rk); }
   head.append(coin(t, "av"), nm);
   const pr = el("div", "bigprice"), ch = m.price_change_24h_pct;
   pr.append(el("span", "v", fmtPrice(m.price_usd)), el("span", "c " + tone(ch, 1), signed(ch, 1, "% (24h)")), el("span", "t", fill(T.panel.as_of, { time: clock(t.ts) })));
   const lc = el("div", "linkchips"); for (const k of ["website", "whitepaper", "docs", "x", "github"]) lc.append(linkChip(t, k));
   const btns = el("div", "lrow");
-  const a1 = el("a", "lb", "📈 DexScreener"); a1.href = "https://dexscreener.com/solana/" + addr; a1.target = "_blank"; a1.rel = "noopener noreferrer";
-  const a2 = el("a", "lb", "🔎 " + T.panel.explorer_link); a2.href = "https://solscan.io/token/" + addr; a2.target = "_blank"; a2.rel = "noopener noreferrer";
-  const cp = el("button", "lb", "⧉ " + T.panel.copy); cp.title = addr;
-  cp.onclick = async () => { try { await navigator.clipboard.writeText(addr); cp.textContent = "✓ " + T.panel.copied; } catch { cp.textContent = "–"; } setTimeout(() => (cp.textContent = "⧉ " + T.panel.copy), 1200); };
-  btns.append(a1, a2, cp);
+  const a1 = el("a", "lb", "📈 CoinGecko"); a1.href = "https://www.coingecko.com/en/coins/" + addr; a1.target = "_blank"; a1.rel = "noopener noreferrer";
+  btns.append(a1);
+  const contracts = Object.entries(t.contracts || {}), main0 = t.platform && (t.contracts || {})[t.platform];
+  const ex = main0 && explorerUrl(t.platform, main0);
+  if (ex) { const a2 = el("a", "lb", "🔎 " + T.panel.explorer_link); a2.href = ex; a2.target = "_blank"; a2.rel = "noopener noreferrer"; btns.append(a2); }
+  if (main0) { const cp = el("button", "lb", "⧉ " + T.panel.copy); cp.title = main0;
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(main0); cp.textContent = "✓ " + T.panel.copied; } catch { cp.textContent = "–"; } setTimeout(() => (cp.textContent = "⧉ " + T.panel.copy), 1200); };
+    btns.append(cp); }
   const st = tp.stats, sh = tp.stat_help, stats = el("div", "card"), h = t.holders, maxS = maxSupply(t), cp2 = circPct(t);
   const supExtra = el("div"); if (cp2 != null) { const b = el("div", "supbar"), sp = el("span"); sp.style.width = Math.min(100, cp2) + "%"; b.append(sp);
     supExtra.append(b, el("div", "supnote", fill(tp.circ_bar, { pct: pct(cp2), of: t.supply && t.supply.max != null ? "max" : "total" }))); }
   const lowHigh = el("span", "v", "–");
   stats.append(...srow(st.mcap, usd(m.mcap_usd), T.columns.mcap.body), ...srow(st.fdv, usd(m.fdv_usd), T.box_help.fdv),
-    ...srow(st.volume, usd(m.volume_h24_usd), T.box_help.volume), ...srow(st.liquidity, usd(m.liquidity_usd), T.box_help.liquidity),
+    ...srow(st.volume, usd(m.volume_h24_usd), T.box_help.volume), ...srow(st.exchanges, num(m.exchanges), T.columns.exchanges.body),
     ...srow(st.circ, m.circ_supply == null ? "–" : compact(m.circ_supply) + " " + (m.symbol || ""), sh.circ, supExtra),
     ...srow(st.total, compact(m.total_supply), sh.total), ...srow(st.max, compact(maxS), sh.max),
-    ...srow(st.holders, compact(m.holders), T.columns.holders.body),
     ...srow(st.top10, h && h.top10_excl_pct != null ? (h.complete ? "" : "≥") + pct(h.top10_excl_pct) : "–", T.columns.top10.body),
-    ...srow(st.age, m.age_d == null ? "–" : fill(tp.age_days, { d: num(m.age_d) }), sh.age));
+    ...srow(st.age, m.age_d == null ? "–" : fill(tp.age_days, { d: num(m.age_d) }), sh.age),
+    ...srow(st.chain, !profiled(t) ? "–" : t.platform ? t.platform : T.table.own_chain, sh.chain));
+  for (const [p, a] of contracts.slice(0, 6)) {  // contract per chain (bridged copies included), as listed on CoinGecko
+    const u = explorerUrl(p, a), v = el(u ? "a" : "span", "v m", a.length > 14 ? shortAddr(a) : a); v.title = a;
+    if (u) { v.href = u; v.target = "_blank"; v.rel = "noopener noreferrer"; }
+    const r = el("div", "srow"), k = el("span", "k", fill(tp.contract_on, { chain: chainBadge(p) })); k.title = sh.contract; r.append(k, v); stats.append(r); }
   const lh = el("div", "srow"), lhk = el("span", "k", st.low_high); lhk.title = sh.low_high; lh.append(lhk, lowHigh); stats.append(lh);
   left.append(back, head, pr, lc, btns, stats, checklistEl(t));
   const chartSlot = el("div"), about = el("div", "card about"), pts = el("div", "card"), src = el("div", "card");
@@ -985,7 +1000,7 @@ async function renderTokenPage() {
   src.append(el("h3", null, tp.sources_title));
   const holdersSlot = el("div");
   main.append(chartSlot, about, pts, holdersSlot, src);
-  pg.append(left, main); center.append(pg, el("div", "disc", T.disclaimer));
+  pg.append(left, main); center.append(pg, discEl());
   if (!(addr in details)) { try { details[addr] = await api("/api/token/" + addr); } catch { details[addr] = null; } }
   if (route.name !== "token" || route.address !== addr) return;   // navigated away while loading
   const d = details[addr];
@@ -997,7 +1012,7 @@ async function renderTokenPage() {
   const list = el("ul", "plist"); for (const p of (d && d.points) || []) if (T.points[p.id]) list.append(el("li", null, fill(T.points[p.id], p.vars)));
   pts.append(list.children.length ? list : el("div", "pintro", tp.points_none));
   const f = (d && d.fetched) || {}, when = (ts) => ts ? ago(ts) : null, sl = el("ul", "slist");
-  for (const [k, ts] of [["src_market", f.market], ["src_chart", f.chart], ["src_links", f.links], ["src_holders", f.holders]])
+  for (const [k, ts] of [["src_market", f.market], ["src_chart", f.chart], ["src_links", f.links]].concat(t.platform === "solana" ? [["src_holders", f.holders]] : []))
     sl.append(el("li", null, when(ts) ? fill(tp[k], { ago: when(ts) }) : tp[k].split(":")[0] + ": " + tp.src_never));
   src.append(sl);
 }
@@ -1019,7 +1034,6 @@ function renderFilters(body) {
   const ft = T.filters, fields = el("div", "fields");
   body.append(el("div", "pdesc", ft.intro));
   fields.append(numField(ft.max_top10, F.maxTop10, (v) => { F.maxTop10 = v; filtersChangedSoft(); }, T.columns.top10.body),
-                numField(ft.min_holders, F.minHolders, (v) => { F.minHolders = v; filtersChangedSoft(); }),
                 numField(ft.min_mcap, F.minMcap, (v) => { F.minMcap = v; filtersChangedSoft(); }), el("div"));
   for (const [k, l] of [["website", ft.has_website], ["whitepaper", ft.has_whitepaper], ["docs", ft.has_docs], ["github", ft.has_github], ["x", ft.has_x]])
     fields.append(boolField(l, F[k], (v) => { F[k] = v; filtersChangedSoft(); }));

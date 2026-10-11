@@ -8,7 +8,6 @@ foreign web page cannot send without a CORS preflight we never approve.
 """
 import json
 import logging
-import re
 import subprocess
 import sys
 import threading
@@ -19,6 +18,7 @@ from pathlib import Path
 import yaml
 
 from coinsieve import ai_summary, charts, coverage, facts, funnel, history, market, site_text, whatif
+from coinsieve.coingecko import CHAIN, COIN_ID
 from coinsieve.config_edit import write_values
 from coinsieve.digest import blocked_reason
 from coinsieve.sanitize import clean_text
@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 HTML = Path(__file__).with_name("dashboard.html")
 TIERS = ("coverage",)   # the site shows the coverage list only (other tiers stay runnable from the CLI)
-ADDR = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
+ADDR = COIN_ID          # covered tokens are identified by their CoinGecko id (URLs, logos, token files)
 
 
 class Runner:
@@ -90,7 +90,7 @@ class App:
     def state(self):
         """Everything the page shows, from the database only."""
         cfg, now = self.load_cfg(), time.time()
-        chain, pub, texts = cfg["chain"], cfg["publishing"], site_text.load()
+        chain, pub, texts = CHAIN, cfg["publishing"], site_text.load()
         store = Store(str(self.db_path))
         try:
             ts, tokens = self.tier_tokens(store, coverage.TIER)
@@ -105,6 +105,7 @@ class App:
                 m, a = t["metrics"], t["metrics"]["address"]
                 prof = profs.get(a) or {}
                 p = prof.get("data") or {}
+                cg = p.get("coingecko") or {}
                 icon = p.get("icon") or m.get("icon")
                 if icon:
                     self.icons[a] = icon
@@ -114,6 +115,7 @@ class App:
                     "status": coverage.status(chks), "checks": chks, "reasons": [] if self.public else t["reasons"],
                     "links": p.get("links"), "supply": p.get("supply"), "profile_at": prof.get("updated_at"),
                     "holders": holders_view(hold.get(a)), "unlock": None, "logo": bool(icon),
+                    "platform": cg.get("platform"), "contracts": cg.get("platforms") or {},
                     # read from the SQLite cache only; never fetched per page load
                     "chart": charts.view(chart_rows.get(a), hours, cfg, now),
                 })
@@ -121,7 +123,7 @@ class App:
                    "last_run": ts, "stale_after_s": cfg["coverage"]["stale_after_minutes"] * 60,
                    "members": len(members), "tokens": rows, "chart_hours": hours,
                    "criteria": whatif.current_values(cfg, coverage.TIER),
-                   "exclude_tags": cfg["jupiter"]["exclude_tags"], "sources": self.sources(store, ts),
+                   "exclude_categories": cfg["coverage"]["exclude_categories"], "sources": self.sources(store, ts),
                    "columns": {"max": cfg["site"]["columns_max"], "default": cfg["site"]["default_columns"]},
                    "unlocks_public": cfg["unlocks"]["public"],
                    "facts": cfg["facts"],
@@ -138,7 +140,7 @@ class App:
         """Token page extras (chart history, holder history, points to check, fetch times), or None.
         Public mode: covered tokens only. From the database only."""
         cfg, now = self.load_cfg(), time.time()
-        chain = cfg["chain"]
+        chain = CHAIN
         store = Store(str(self.db_path))
         try:
             ts, tokens = self.tier_tokens(store, coverage.TIER)
@@ -165,9 +167,8 @@ class App:
     def sources(store, coverage_ts):
         """Last successful fetch per data source (Methodology page)."""
         prof, hold = store.max_ts("token_profiles", "updated_at"), store.max_ts("holder_reports", "ts")
-        return {"jupiter": coverage_ts, "dexscreener": prof, "coingecko": prof, "homepage": prof, "rugcheck": hold,
-                "solana_rpc": hold, "geckoterminal": store.max_ts("chart_series", "fetched_at"),
-                "market": store.max_ts("market_snapshots", "ts")}
+        return {"coingecko": coverage_ts, "coingecko_profiles": prof, "homepage": prof, "rugcheck": hold,
+                "solana_rpc": hold, "market": store.max_ts("market_snapshots", "ts")}
 
     def market_view(self):
         """(market strip from the cache, latest snapshot or None). No API calls."""
