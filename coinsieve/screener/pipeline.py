@@ -163,7 +163,9 @@ def step_github(cfg, db, api, now, date, included, max_n, sleep=time.sleep):
         fresh.add(owner)
     saved = 0
     for cid, owners in coin_owners.items():
-        if not fresh.intersection(owners):
+        # Save when an owner was just fetched, or when raw data exists but its metrics were never saved (a run
+        # that stopped between the fetch and this loop). Old data is not re-saved as a new observation.
+        if not fresh.intersection(owners) and "commits_90d" in db.latest_metrics(cid, date):
             continue
         m = gh_source.coin_metrics([db.get_kv(f"github:{o}") for o in owners], now)
         if m:

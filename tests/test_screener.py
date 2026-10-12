@@ -264,6 +264,20 @@ class TestStepErrors(unittest.TestCase):
         self.assertIn("0 profiles fetched, 0 still due", msg)        # retried tomorrow, not now
         self.assertEqual(due(db, "cg_profile", ["a"], 7, NOW + 86400), ["a"])
 
+    def test_github_metrics_saved_even_when_owner_was_fetched_by_an_interrupted_run(self):
+        from coinsieve.screener import pipeline
+        cfg = {"screener": {"github": {"refresh_days": 7}}}
+        db = ScreenerDB(":memory:")
+        db.set_links("btc", "github", ["https://github.com/bitcoin/bitcoin"], NOW)
+        db.set_kv("github:bitcoin", {"repos": ["bitcoin/bitcoin"], "commit_weeks": {int(NOW - 86400 * 7): 9},
+                                     "contributors": {}, "stars": 1.0, "forks": 1.0, "last_push_ts": NOW,
+                                     "active_repos_90d": 1.0, "incomplete": 0}, NOW)
+        db.mark_fetched("github", "bitcoin", NOW)            # fetched earlier, metrics never saved
+        msg = pipeline.step_github(cfg | {"screener": {"github": {"refresh_days": 7}}}, db, None, NOW,
+                                   "2026-10-12", ["btc"], 5)
+        self.assertIn("1 coins updated", msg)
+        self.assertEqual(db.latest_metrics("btc", "2026-10-12")["commits_90d"]["value"], 9)
+
 
 if __name__ == "__main__":
     unittest.main()
