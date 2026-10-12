@@ -131,7 +131,7 @@ def _fmt(v):
         return f"{v / 1e9:,.1f}B"
     if abs(v) >= 1e6:
         return f"{v / 1e6:,.1f}M"
-    if abs(v) >= 100:
+    if v == int(v) or abs(v) >= 100:
         return f"{v:,.0f}"
     if abs(v) >= 1:
         return f"{v:,.2f}"
@@ -237,7 +237,7 @@ body{{background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif;m
 main{{max-width:1100px;margin:auto}} h1{{font-size:22px;margin:0 0 4px}} .mut{{color:var(--mut)}}
 table{{border-collapse:collapse;width:100%}} th,td{{padding:6px 8px;border-bottom:1px solid var(--line);
 text-align:left;vertical-align:top}} .r{{text-align:right;font-variant-numeric:tabular-nums}}
-.cat{{position:relative;width:11%;min-width:60px}} .bar{{position:absolute;left:0;top:30%;height:40%;
+.cat{{position:relative;width:11%;min-width:60px}} .bar{{position:absolute;left:0;top:8px;height:16px;
 background:var(--bar);opacity:.25;border-radius:2px}} .num{{position:relative}} .cat.flag .bar{{background:var(--flag)}}
 .cat.flag .num::after{{content:" *";color:var(--flag)}} tr.fail{{opacity:.55}} .total{{font-weight:600}}
 summary{{cursor:pointer}} .detail{{margin:8px 0;font-size:13px}} .detail .sub th{{background:transparent;
