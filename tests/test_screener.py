@@ -175,6 +175,25 @@ class TestGitHub(unittest.TestCase):
         self.assertEqual(m["days_since_push"], 1.0)
         self.assertIsNone(gh_source.coin_metrics([None], NOW))
 
+    def test_stats_ask_all_first_then_only_pending(self):
+        from coinsieve.screener.api import Result
+
+        class FakeApi:
+            def __init__(self):
+                self.calls = []
+                self.answers = {"a": [202, 200], "b": [204], "c": [202, 202, 202]}
+
+            def get(self, path, ttl_hours=0):
+                self.calls.append(path)
+                st = self.answers[path].pop(0)
+                return Result(st, [1] if st == 200 else None)
+
+        fake, sleeps = FakeApi(), []
+        out = gh_source._stats_all(fake, ["a", "b", "c"], 1, 5, sleeps.append)
+        self.assertEqual(out, {"a": [1], "b": [], "c": None})
+        self.assertEqual(fake.calls, ["a", "b", "c", "a", "c", "c"])
+        self.assertEqual(sleeps, [5, 5])
+
 
 class TestCoinGecko(unittest.TestCase):
     def test_ticker_metrics_use_major_exchanges_only(self):

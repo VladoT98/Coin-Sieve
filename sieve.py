@@ -17,6 +17,7 @@ Usage:
     python sieve.py fetch [--steps a,b] [--max-profiles N] [--max-owners N]   # v4 data pipeline (budgeted)
     python sieve.py budget                                              # v4 API calls this month
     python sieve.py backup [--out data/backup]                          # v4 gzipped DB copy
+    python sieve.py score [--explain ID] [--csv F] [--sensitivity]      # v4 Quality score + review page
 """
 import argparse
 import logging
@@ -493,6 +494,12 @@ def main():
     p_fetch.add_argument("--max-owners", type=int, default=None, help="GitHub owners this run")
     p_fetch.add_argument("--max-backfill", type=int, default=None, help="365-day price backfills this run")
     sub.add_parser("budget", help="v4: API calls this month per provider and the CoinGecko projection")
+    p_score = sub.add_parser("score", help="v4: Quality score from stored data (no API calls) + reports")
+    p_score.add_argument("--date", default=None, help="YYYY-MM-DD (default: today, UTC)")
+    p_score.add_argument("--explain", default=None, help="CoinGecko id: every metric, percentile and source")
+    p_score.add_argument("--csv", default=None, help="write a CSV (opens in Excel)")
+    p_score.add_argument("--html", default=None, help="write the review page (default: data/reports/...)")
+    p_score.add_argument("--sensitivity", action="store_true", help="top-list changes when weights move +-5")
     p_bak = sub.add_parser("backup", help="v4: gzipped copy of the screener database (history backup)")
     p_bak.add_argument("--out", default="data/backup")
     args = parser.parse_args()
@@ -539,6 +546,12 @@ def main():
     if command == "budget":
         from coinsieve.screener import pipeline
         return pipeline.budget_report(cfg)
+    if command == "score":
+        from coinsieve.screener import score_run
+        day = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return score_run.run_score(cfg, as_of=day, explain=args.explain, csv_path=args.csv,
+                                   html_path=args.html or f"data/reports/quality-score-{day}.html",
+                                   show_sensitivity=args.sensitivity)
     if command == "backup":
         from coinsieve.screener import pipeline
         return pipeline.backup(cfg, args.out)

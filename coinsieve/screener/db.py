@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS api_calls (
     ts REAL, provider TEXT, path TEXT, status INTEGER, ms INTEGER);
 CREATE INDEX IF NOT EXISTS api_calls_month ON api_calls (provider, ts);
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT, updated_at REAL);
+CREATE TABLE IF NOT EXISTS scores_daily (
+    date TEXT, cg_id TEXT, total REAL, rank INTEGER, rank_all INTEGER, passes INTEGER, fail_reasons TEXT,
+    categories TEXT, config_hash TEXT, PRIMARY KEY (date, cg_id));
+CREATE TABLE IF NOT EXISTS metric_scores (
+    date TEXT, cg_id TEXT, metric TEXT, value REAL, percentile REAL, source_url TEXT,
+    PRIMARY KEY (date, cg_id, metric));
 """
 
 
@@ -137,6 +143,18 @@ class ScreenerDB:
 
     def set_kv(self, key, value, now):
         self.conn.execute("INSERT OR REPLACE INTO kv VALUES (?,?,?)", (key, json.dumps(value), now))
+
+    def prices(self, cg_id, since_date):
+        return [tuple(r) for r in self.conn.execute(
+            "SELECT date, price, mcap FROM price_daily WHERE cg_id = ? AND date >= ? ORDER BY date",
+            (cg_id, since_date))]
+
+    def save_scores(self, date, rows, metric_rows):
+        """Replaces the scores of `date` (re-scoring a day after a config change overwrites that day only)."""
+        self.conn.execute("DELETE FROM scores_daily WHERE date = ?", (date,))
+        self.conn.execute("DELETE FROM metric_scores WHERE date = ?", (date,))
+        self.conn.executemany("INSERT INTO scores_daily VALUES (?,?,?,?,?,?,?,?,?)", rows)
+        self.conn.executemany("INSERT INTO metric_scores VALUES (?,?,?,?,?,?)", metric_rows)
 
     def commit(self):
         self.conn.commit()

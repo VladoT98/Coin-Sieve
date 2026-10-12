@@ -48,15 +48,28 @@ def pick_repos(repos, listed, n):
     return (first + rest)[:n]
 
 
-def _stats(api, path, ttl_hours, retry_s, sleep):
-    for _ in range(3):
-        res = api.get(path, ttl_hours=ttl_hours)
-        if res.status == 204:        # empty repository: no activity (complete, not "still computing")
-            return []
-        if res.status != 202:
-            return res.data if res.ok and isinstance(res.data, list) else None
-        sleep(retry_s)
-    return None
+def _stats_all(api, paths, ttl_hours, retry_s, sleep, rounds=3):
+    """{path: list | None}. All paths are asked first (each 202 starts GitHub's computation, so they run in
+    parallel), then only the pending ones are asked again after `retry_s`, up to `rounds` passes in total."""
+    out, pending = {}, list(paths)
+    for i in range(rounds):
+        if i:
+            sleep(retry_s)
+        still = []
+        for path in pending:
+            res = api.get(path, ttl_hours=ttl_hours)
+            if res.status == 202:
+                still.append(path)
+            elif res.status == 204:      # empty repository: no activity (complete, not "still computing")
+                out[path] = []
+            else:
+                out[path] = res.data if res.ok and isinstance(res.data, list) else None
+        pending = still
+        if not pending:
+            break
+    for path in pending:
+        out[path] = None
+    return out
 
 
 def fetch_owner(api, owner, listed, cfg, now, sleep):
@@ -75,11 +88,13 @@ def fetch_owner(api, owner, listed, cfg, now, sleep):
            "forks": float(sum(r.get("forks_count") or 0 for r in own)),
            "last_push_ts": max(pushes) if pushes else None,
            "active_repos_90d": float(sum(1 for t in pushes if now - t <= 90 * 86400))}
-    for r in pick_repos(res.data, listed, cfg["repos_per_owner"]):
-        full = r.get("full_name")
+    picked = [r.get("full_name") for r in pick_repos(res.data, listed, cfg["repos_per_owner"])]
+    stats = _stats_all(api, [f"repos/{full}/stats/{kind}" for full in picked
+                             for kind in ("commit_activity", "contributors")], ttl, cfg["stats_retry_s"], sleep)
+    for full in picked:
         raw["repos"].append(full)
-        acts = _stats(api, f"repos/{full}/stats/commit_activity", ttl, cfg["stats_retry_s"], sleep)
-        contr = _stats(api, f"repos/{full}/stats/contributors", ttl, cfg["stats_retry_s"], sleep)
+        acts = stats[f"repos/{full}/stats/commit_activity"]
+        contr = stats[f"repos/{full}/stats/contributors"]
         if acts is None or contr is None:
             raw["incomplete"] += 1
         for w in acts or []:

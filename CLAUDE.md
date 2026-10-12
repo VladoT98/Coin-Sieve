@@ -82,6 +82,13 @@ A Solana token screener product, aiming for revenue:
   cached in `data/cache` (re-running a day is ~free). `python sieve.py budget` (calls this month + projection),
   `python sieve.py backup [--out data/backup]` (gzipped consistent DB copy). Tables: `universe_daily`,
   `price_daily`, `metric_values(date, cg_id, metric, value, text, source_url NOT NULL)`, `links`, `fetch_log`.
+- **v4 Quality score (Phase 2):** `python sieve.py score [--date D] [--explain <cg_id>] [--csv F] [--sensitivity]`
+  — reads only the DB (no API calls), config `screener.scoring` (metrics, categories, weights, filters, list band).
+  `scoring.py` = pure math (derive → percentiles → re-weighted categories → total → filters → rank);
+  `score_run.py` = I/O + reports. Writes `scores_daily` / `metric_scores` (re-scoring a date replaces that date
+  only) and the review page `data/reports/quality-score-<date>.html` (sent to the user instead of asking them to
+  run commands — user decision 2026-10-12: never ask the user to use PowerShell; production runs on GitHub).
+  "Quality score" is the allowed product term; disclaimer "Educational information only, not investment advice."
 - **v3 multi-chain (branch `multichain`, 2026-10-11):** `python sieve.py run` defaults to `--tiers coverage`: universe = CoinGecko `coins/markets` down to `coverage.scope_min_mcap_usd`; criteria = not in `coverage.exclude_categories`, mcap, 24h volume, age lower bound, `min_exchanges`, website/docs. Tokens are keyed by **CoinGecko id** (store key space `coingecko.CHAIN = "coingecko"`, URLs `#/token/<id>`); old Solana-mint members are closed once without events. The table's 7-day line comes from the same markets call (`sparkline_in_7d`; no GeckoTerminal for coverage). `python sieve.py profiles [--max N]` (CoinGecko `coins/{id}` with tickers + DexScreener info fallback for links + homepage scan + 1-year chart when age is unproven; daily, ~25 tokens/run) and `python sieve.py holders [--force]` (Solana-issued tokens only: RugCheck top 20 + Solana RPC; daily). Order on a fresh DB: `run` → `profiles` + `holders` → `run`. The website reads only from the DB/logo cache (market strip thread is the exception until Stage E). All site texts live in `coinsieve/site_text.yaml`. Lines below describe the v2 screener and are rewritten in Stage G.
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).

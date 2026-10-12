@@ -14,7 +14,8 @@ screener:
     # CoinGecko category ids (checked 2026-10-11). Copy of coverage.exclude_categories so v4 stays independent.
     exclude_categories: [stablecoins, yield-bearing-stablecoins, wrapped-tokens, bridged-tokens, liquid-staking-tokens,
                          liquid-restaking-tokens, tokenized-products]
-    exclude_ids: []                # CoinGecko ids excluded by hand (give the reason in a comment)
+    exclude_ids:                   # CoinGecko ids excluded by hand (give the reason in a comment)
+      - 3jane-usd3                 # dollar-denominated yield token, not tagged as a stablecoin (user 2026-10-12)
     categories_ttl_hours: 168      # category membership lists refreshed weekly
     max_market_pages: 4            # 250 coins per page; stops early below stay_mcap_usd
   coingecko:
@@ -45,6 +46,48 @@ screener:
     max_owners_per_run: 80         # one owner = 1 repo list + 2 calls per repo
     repos_per_owner: 5             # most recently pushed, non-fork, non-archived repos of the owner
     stats_retry_s: 5               # /stats/* answers 202 while GitHub computes them
+
+  # ---- Phase 2: Quality score. Each metric -> percentile within the universe (0-100, ties share the average
+  # rank; direction "lower" flips it). Category score = weighted mean of the metrics a coin HAS (missing ones are
+  # skipped and the rest re-weighted); fewer than min_metrics_per_category -> 50 and flagged "not enough data".
+  # Total = categories x weights (must add up to 100). All values are starting guesses, tuned later.
+  scoring:
+    categories: {liquidity: 25, fundamentals: 20, development: 20, tokenomics: 25, momentum: 10}
+    min_metrics_per_category: 2
+    min_coins_per_metric: 30        # a metric fewer coins have is skipped for everyone
+    max_metric_age_days: 10         # older observations count as missing (weekly sources refresh every 7 days)
+    metrics:                        # id: {category, weight, direction} - formulas in coinsieve/screener/scoring.py
+      major_volume_mcap:      {category: liquidity, weight: 1, direction: higher}  # 24h volume on major exchanges / mcap
+      depth_mcap:             {category: liquidity, weight: 1, direction: higher}  # +-2% order-book depth (majors) / mcap
+      spread_pct:             {category: liquidity, weight: 1, direction: lower}   # bid-ask spread on major exchanges
+      exchanges_count:        {category: liquidity, weight: 1, direction: higher}  # distinct exchanges (first 100 tickers)
+      major_exchanges_count:  {category: liquidity, weight: 1, direction: higher}  # of screener.coingecko.major_exchanges
+      tvl_mcap:               {category: fundamentals, weight: 1, direction: higher}  # protocol (else chain) TVL / mcap
+      fees_mcap:              {category: fundamentals, weight: 1, direction: higher}  # fees 30d x 12 / mcap
+      revenue_mcap:           {category: fundamentals, weight: 1, direction: higher}  # revenue 30d x 12 / mcap
+      fees_trend:             {category: fundamentals, weight: 0.5, direction: higher}  # fees last 30d / 30d before
+      tvl_change_30d:         {category: fundamentals, weight: 0.5, direction: higher}  # protocol TVL change, %
+      commits_90d:            {category: development, weight: 1, direction: higher}
+      contributors_90d:       {category: development, weight: 1, direction: higher}
+      active_weeks_1y:        {category: development, weight: 1, direction: higher}  # weeks with commits (of 52)
+      days_since_push:        {category: development, weight: 0.5, direction: lower}
+      circulating_ratio:      {category: tokenomics, weight: 1, direction: higher}  # circulating / max (else total)
+      fdv_mcap:               {category: tokenomics, weight: 1, direction: lower}   # fully diluted value / mcap
+      supply_change_30d:      {category: tokenomics, weight: 1, direction: lower}   # % (mcap / price, own history)
+      supply_change_1y:       {category: tokenomics, weight: 1, direction: lower}
+      rel_change_30d:         {category: momentum, weight: 1, direction: higher}    # price change 30d minus BTC's
+      rel_change_200d:        {category: momentum, weight: 1, direction: higher}    # price change 200d minus BTC's
+      ath_distance:           {category: momentum, weight: 0.5, direction: higher}  # % below all-time high (-80 < -10)
+    info_metrics: [rsi_14, volatility_90d, watchlist_mcap]   # computed and shown, never scored
+    filters:                        # hard rules: a coin failing one is ranked but does not pass
+      min_age_days: 365             # lower bound: earliest of ATH/ATL date, genesis date, first stored price
+      min_major_volume_24h_usd: 250000
+      min_exchanges: 3
+      require_website_or_docs: true
+      core_categories: [liquidity, tokenomics, momentum]   # data every coin should have
+      min_core_completeness_pct: 75 # share of core-category metrics with a value
+    list: {enter_rank: 30, leave_rank: 40}   # Phase 3: rank among passing coins
+    disclaimer: "Educational information only, not investment advice."
 
 # ---- coverage list: the established tokens profiled on the website ("Tokens"), every blockchain ----
 # Universe = CoinGecko coins/markets, largest market cap first (user decision 2026-10-11: multi-chain, >= $100M,
