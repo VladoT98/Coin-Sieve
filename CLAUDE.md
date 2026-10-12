@@ -1,5 +1,19 @@
 # Coin Sieve
 
+## Direction v4 (2026-10-12, branch `quality-score`) — full brief: `docs/PRODUCT.md`
+- Daily scored ranking of coins ≥ $100M market cap (CoinGecko ID = master ID; no stablecoins, wrapped, staked/LST).
+  Each metric → percentile within the universe → 4–5 weighted categories → total score → filter rules → a list of
+  ~20–40 coins. Telegram posts daily what ENTERED / LEFT the list and why; weekly list performance vs BTC.
+- Free data only: CoinGecko Demo API (10k calls/month, 100/min — budget every call; per-coin metadata weekly),
+  DefiLlama free API (match via `gecko_id`), GitHub API (token). RSI and price metrics computed by us.
+- CryptoScores (cryptoscores.com) is a reference for ideas only: never copy its text, design or branding.
+- Rules: all weights/thresholds/filters in config; store a source URL for every data point; daily snapshots are
+  never deleted; every output says "Educational information only, not investment advice"; no buy/sell language
+  ("passes / fails our screening criteria"); show "Data provided by CoinGecko" + link wherever its data appears.
+- Process: one phase per session; ask before deleting features, migrating/dropping data or force-pushing; at the
+  end of each phase show how to test it, then commit after approval. Explain new web tools the first time.
+- Sections below describe v2/v3 (still live on main) until the v4 phases replace them.
+
 ## Goal (v2)
 A Solana token screener product, aiming for revenue:
 1. **Website** (v3, user decision 2026-10-11): one "Tokens" list of established tokens from **every blockchain** (CoinGecko), not Solana only. No stablecoins, wrapped/bridged/staked copies or tokenised assets; meme and exchange tokens stay. Never "risk", "reward", "picks" or quality words — criteria are objective (age, size, volume, markets, docs). The v2 tier tabs below now exist only in Telegram (Solana, Jupiter).
