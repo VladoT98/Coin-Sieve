@@ -17,7 +17,8 @@ from coinsieve.screener.db import ScreenerDB
 LABELS = {
     "major_volume_mcap": "Major-exchange volume / mcap", "depth_mcap": "±2% order-book depth / mcap",
     "spread_pct": "Bid-ask spread (%)", "exchanges_count": "Exchanges", "major_exchanges_count": "Major exchanges",
-    "tvl_mcap": "TVL / mcap", "fees_mcap": "Fees (yearly pace) / mcap", "revenue_mcap": "Revenue (yearly pace) / mcap",
+    "tvl_mcap": "TVL / mcap", "chain_tvl": "Value locked on the chain (USD)",
+    "chain_fees": "Fees paid on the chain, 30d (USD)", "chain_fees_trend": "Chain fees 30d vs previous 30d", "fees_mcap": "Fees (yearly pace) / mcap", "revenue_mcap": "Revenue (yearly pace) / mcap",
     "fees_trend": "Fees 30d vs previous 30d", "tvl_change_30d": "TVL change 30d (%)",
     "commits_90d": "Commits 90d", "contributors_90d": "Contributors 90d", "active_weeks_1y": "Active weeks (of 52)",
     "days_since_push": "Days since last push", "circulating_ratio": "Circulating / max supply",
@@ -59,6 +60,7 @@ def load(db, scfg, as_of, now_ts):
         fails = scoring.filter_reasons(facts, metrics, scfg, now_ts, as_of)
         sym, name = names.get(cid, ("", cid))
         coins[cid] = {"metrics": metrics, "sources": sources, "facts": facts, "passes": not fails, "fails": fails,
+                      "no_source": scoring.no_source(raw),
                       "symbol": clean_text(sym or "", 12), "name": clean_text(name or cid, 40)}
     return coins, udate
 
@@ -117,6 +119,11 @@ def run_score(cfg, as_of=None, now=None, explain=None, csv_path=None, html_path=
         db.close()
 
 
+def _cat(cs):
+    """Category score as text: "n/a" when left out of the total (missing_policy: exclude)."""
+    return "n/a" if cs["score"] is None else f"{cs['score']:.0f}"
+
+
 def _fmt(v):
     if v is None:
         return "–"
@@ -141,7 +148,7 @@ def print_table(order, coins, results, scfg, out, limit=40):
         r = results[cid]
         flags = "".join("*" if r["categories"][c]["flag"] else " " for c in cats)
         out(f"{r['rank']:>3} {coins[cid]['symbol'] + ' ' + coins[cid]['name'][:18]:<24} {r['total']:5.1f}  "
-            + " ".join(f"{r['categories'][c]['score']:5.0f}" for c in cats) + f"  {flags.strip() and '* = not enough data'}")
+            + " ".join(f"{_cat(r['categories'][c]):>5}" for c in cats) + f"  {flags.strip() and '* = see flags'}")
         shown += 1
         if shown >= limit:
             break
@@ -156,7 +163,7 @@ def explain_coin(cid, coins, results, scfg, out):
         f"(all coins: {r['rank_all']}); {'passes' if c['passes'] else 'fails: ' + '; '.join(c['fails'])}")
     for cat, w in scfg["categories"].items():
         cs = r["categories"][cat]
-        out(f"  {CATEGORY_LABELS[cat]} {cs['score']:.0f} (weight {w}, {cs['used']}/{cs['of']} metrics"
+        out(f"  {CATEGORY_LABELS[cat]} {_cat(cs)} (weight {w}, {cs['used']}/{cs['of']} metrics"
             f"{', ' + cs['flag'] if cs['flag'] else ''})")
         for mid, d in scfg["metrics"].items():
             if d["category"] != cat:
@@ -178,7 +185,8 @@ def write_csv(path, order, coins, results, scfg):
         for cid in order:
             c, r = coins[cid], results[cid]
             w.writerow([r["rank"] or "", r["rank_all"], cid, c["symbol"], c["name"], round(r["total"], 2),
-                        *[round(r["categories"][k]["score"], 1) for k in scfg["categories"]], int(c["passes"]),
+                        *[None if r["categories"][k]["score"] is None else round(r["categories"][k]["score"], 1)
+                          for k in scfg["categories"]], int(c["passes"]),
                         "; ".join(c["fails"]), *[c["metrics"].get(m) for m in mids],
                         *[None if r["pct"].get(m) is None else round(r["pct"][m], 1) for m in scfg["metrics"]]])
 
@@ -194,12 +202,13 @@ def write_html(path, as_of, order, coins, results, scfg, sens, h):
             f'<td class="cat{" flag" if r["categories"][k]["flag"] else ""}" title="{esc(CATEGORY_LABELS[k])}: '
             f'{r["categories"][k]["used"]}/{r["categories"][k]["of"]} metrics'
             f'{" – " + r["categories"][k]["flag"] if r["categories"][k]["flag"] else ""}">'
-            f'<span class="bar" style="width:{r["categories"][k]["score"]:.0f}%"></span>'
-            f'<span class="num">{r["categories"][k]["score"]:.0f}</span></td>' for k in cats)
+            f'<span class="bar" style="width:{r["categories"][k]["score"] or 0:.0f}%"></span>'
+            f'<span class="num">{_cat(r["categories"][k])}</span></td>' for k in cats)
         detail = []
         for k in cats:
             detail.append(f'<tr class="sub"><th colspan="4">{esc(CATEGORY_LABELS[k])} – '
-                          f'{r["categories"][k]["score"]:.0f} (weight {scfg["categories"][k]})</th></tr>')
+                          f'{_cat(r["categories"][k])} (weight {scfg["categories"][k]}'
+                          f'{", " + r["categories"][k]["flag"] if r["categories"][k]["flag"] else ""})</th></tr>')
             for mid, d in scfg["metrics"].items():
                 if d["category"] != k:
                     continue
@@ -235,9 +244,11 @@ summary{{cursor:pointer}} .detail{{margin:8px 0;font-size:13px}} .detail .sub th
 padding-top:12px}} .st{{margin:6px 0;color:var(--mut)}} .info{{font-size:12px;color:var(--mut)}}
 a{{color:var(--bar)}} .wrap{{overflow-x:auto}} footer{{margin-top:24px;font-size:12px;color:var(--mut)}}
 </style></head><body><main>
+<p><a href="./#/tokens">← Coin Sieve token list</a></p>
 <h1>Quality score – {esc(as_of)}</h1>
 <p class=mut>{len(coins)} coins in the universe · {n_pass} pass the screening criteria · weights: {esc(weights)}
-· config {esc(h)}. Faded rows fail a screening criterion. * = not enough data in that category (scored 50).
+· config {esc(h)}. Faded rows fail a screening criterion. * = a category with a flag (hover it): not enough data
+(scored 50), no public code repository (scored 0) or not applicable (n/a, left out of the score).
 Click a coin for its metrics, percentiles and sources.</p>
 <div class=wrap><table><tr><th class=r>#</th><th>Coin</th><th class=r>Score</th>
 {"".join(f"<th>{esc(CATEGORY_LABELS[k])}</th>" for k in cats)}</tr>{"".join(rows)}</table></div>

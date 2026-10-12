@@ -11,6 +11,7 @@ attribution: Market data powered by CoinGecko.
 nav:
   tokens: Tokens
   methodology: Methodology
+  quality: Quality score
   glossary: How to read this
 
 # Column header tooltips: title, 1-3 plain sentences, "Learn more" anchor on the Methodology page.

@@ -69,13 +69,14 @@ class TestDerive(unittest.TestCase):
         return {k: {"value": v, "source_url": f"https://src/{k}"} for k, v in kv.items()}
 
     def test_ratios_relative_change_and_sources(self):
-        raw = self.raw(mcap_usd=1e9, major_volume_24h_usd=5e7, protocol_tvl_usd=2e9, chain_tvl_usd=5e9,
+        raw = self.raw(defillama_website=None, mcap_usd=1e9, major_volume_24h_usd=5e7, protocol_tvl_usd=2e9, chain_tvl_usd=5e9,
                        fees_30d_usd=1e6, fees_prev30d_usd=5e5, circ_supply=90, max_supply=100, total_supply=200,
                        fdv_usd=1.1e9, price_change_30d_pct=10, has_website=0, has_whitepaper=1)
         m, src, facts = scoring.derive(raw, [], self.raw(price_change_30d_pct=4), AS_OF)
         self.assertAlmostEqual(m["major_volume_mcap"], 0.05)
-        self.assertEqual(m["tvl_mcap"], 5.0)                              # larger of protocol / chain TVL
-        self.assertEqual(src["tvl_mcap"], "https://src/chain_tvl_usd")
+        self.assertEqual(m["tvl_mcap"], 2.0)                              # protocol TVL only
+        self.assertEqual(src["tvl_mcap"], "https://src/protocol_tvl_usd")
+        self.assertEqual((m["chain_tvl"], src["chain_tvl"]), (5e9, "https://src/chain_tvl_usd"))  # absolute
         self.assertAlmostEqual(m["fees_mcap"], 0.012)
         self.assertEqual(m["fees_trend"], 2.0)
         self.assertEqual(m["circulating_ratio"], 0.9)                     # max supply before total
@@ -95,6 +96,35 @@ class TestDerive(unittest.TestCase):
         self.assertEqual(scoring.rsi([float(i) for i in range(1, 20)]), 100.0)
         self.assertIsNone(scoring.rsi([1.0] * 10))
         self.assertAlmostEqual(scoring.volatility([1.0] * 100), 0.0)
+
+
+class TestMissingPolicy(unittest.TestCase):
+    def test_no_source_detection(self):
+        self.assertEqual(scoring.no_source({"has_github": {"value": 0.0}}), {"fundamentals", "development"})
+        self.assertEqual(scoring.no_source({"chain_tvl_usd": {"value": None}, "has_github": {"value": 1.0}}), set())
+        self.assertEqual(scoring.no_source({"defillama_group": {"text": "x"}}), set())   # profile not fetched yet
+        self.assertEqual(scoring.no_source({"has_github": {"value": 0.0}, "commits_90d": {"value": 3},
+                                            "protocol_tvl_usd": {"value": 1}}), set())      # override gave a repo
+
+    def test_exclude_spreads_weight_and_zero_counts(self):
+        cfg = small_cfg(missing_policy={"b": "exclude"})
+        coins = TestScore().coins()
+        coins["x"]["no_source"] = {"b"}
+        r = scoring.score(coins, cfg)
+        self.assertEqual(r["x"]["categories"]["b"]["flag"], "not applicable")
+        self.assertIsNone(r["x"]["categories"]["b"]["score"])
+        self.assertAlmostEqual(r["x"]["total"], r["x"]["categories"]["a"]["score"])   # only category a counts
+        cfg["missing_policy"] = {"b": "zero"}
+        r = scoring.score(coins, cfg)
+        self.assertEqual(r["x"]["categories"]["b"]["score"], 0.0)
+        self.assertAlmostEqual(r["x"]["total"], r["x"]["categories"]["a"]["score"] * 0.6)
+
+    def test_config_policy_validation(self):
+        bad = copy.deepcopy(SCFG)
+        bad["missing_policy"] = {"fundamentals": "skip", "nope": "zero"}
+        errs = " | ".join(scoring.validate(bad))
+        self.assertIn("missing_policy fundamentals: skip", errs)
+        self.assertIn("missing_policy nope", errs)
 
 
 class TestFilters(unittest.TestCase):

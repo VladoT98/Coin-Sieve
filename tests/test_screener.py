@@ -114,7 +114,7 @@ class TestDefiLlama(unittest.TestCase):
         {"defillamaId": "4", "name": "Other token child", "geckoId": "other", "parentProtocol": "parent#aave",
          "tvl": 7},
         {"defillamaId": "5", "name": "Solo", "geckoId": "solo", "tvl": 10},
-    ], "parentProtocols": [{"id": "parent#uniswap", "gecko_id": "uniswap"}, {"id": "parent#aave", "gecko_id": None}]}
+    ], "parentProtocols": [{"id": "parent#uniswap", "gecko_id": "uniswap", "url": "https://app.uniswap.org/"}, {"id": "parent#aave", "gecko_id": None}]}
     CHAINS = [{"name": "BSC", "gecko_id": "binancecoin", "tvl": 5e9}, {"name": "Binance", "gecko_id": "binancecoin",
               "tvl": 0}, {"name": "Hyperliquid L1", "gecko_id": "uniswap", "tvl": 1}]
     FEES = [{"defillamaId": "2", "total30d": 30, "total7d": 7}, {"defillamaId": "chain#bsc", "protocolType": "chain",
@@ -136,13 +136,15 @@ class TestDefiLlama(unittest.TestCase):
     def test_parent_only_gecko_id(self):
         m = self.metrics("uniswap")
         self.assertEqual(m["protocol_tvl_usd"][0], 400)
-        self.assertEqual(m["fees_30d_usd"][0], 100)                    # protocol fees win over chain fees
+        self.assertEqual(m["fees_30d_usd"][0], 100)
+        self.assertEqual(m["defillama_website"][0], "https://app.uniswap.org/")
         self.assertEqual(m["chain_tvl_usd"][1], "https://defillama.com/chain/Hyperliquid L1")
 
     def test_duplicate_chain_rows_take_largest_and_chain_fees(self):
         m = self.metrics("binancecoin")
         self.assertEqual(m["chain_tvl_usd"], (5e9, "https://defillama.com/chain/BSC"))
-        self.assertEqual(m["fees_30d_usd"][0], 18)
+        self.assertEqual(m["chain_fees_30d_usd"][0], 18)                # chain usage, never protocol fees
+        self.assertNotIn("fees_30d_usd", m)
 
     def test_standalone_uses_slug(self):
         self.assertEqual(self.metrics("solo")["protocol_tvl_usd"][1], "https://defillama.com/protocol/solo-slug")

@@ -135,8 +135,10 @@ def step_github(cfg, db, api, now, date, included, max_n, sleep=time.sleep):
     g = cfg["screener"]["github"]
     coin_owners = {}
     listed = {}
+    overrides = g.get("owner_overrides") or {}
     for cid in included:
-        owners, rep = gh_source.owners_and_repos(db.links(cid, "github"))
+        owners, rep = gh_source.owners_and_repos(
+            [f"https://github.com/{o}" for o in overrides[cid]] if cid in overrides else db.links(cid, "github"))
         if owners:
             coin_owners[cid] = owners[:2]
             for o in owners[:2]:

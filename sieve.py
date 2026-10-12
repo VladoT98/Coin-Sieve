@@ -21,6 +21,7 @@ Usage:
 """
 import argparse
 import logging
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -541,7 +542,9 @@ def main():
     if command == "fetch":
         from coinsieve.screener import pipeline
         steps = [x.strip() for x in args.steps.split(",") if x.strip()] if args.steps else None
-        return pipeline.run_fetch(cfg, dotenv_values(".env"), steps=steps, max_profiles=args.max_profiles,
+        env = {**dotenv_values(".env"), **{k: v for k, v in os.environ.items() if k in ("COINGECKO_DEMO_KEY",
+                                                                                      "GITHUB_TOKEN")}}
+        return pipeline.run_fetch(cfg, env, steps=steps, max_profiles=args.max_profiles,
                                   max_owners=args.max_owners, max_backfill=args.max_backfill)
     if command == "budget":
         from coinsieve.screener import pipeline

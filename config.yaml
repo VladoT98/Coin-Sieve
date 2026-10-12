@@ -46,6 +46,8 @@ screener:
     max_owners_per_run: 80         # one owner = 1 repo list + 2 calls per repo
     repos_per_owner: 5             # most recently pushed, non-fork, non-archived repos of the owner
     stats_retry_s: 5               # /stats/* answers 202 while GitHub computes them
+    owner_overrides:               # CoinGecko id -> GitHub owners, when CoinGecko links a stale account
+      solana: [anza-xyz]           # solana-labs repos were archived; the validator moved to anza-xyz/agave (2024)
 
   # ---- Phase 2: Quality score. Each metric -> percentile within the universe (0-100, ties share the average
   # rank; direction "lower" flips it). Category score = weighted mean of the metrics a coin HAS (missing ones are
@@ -62,11 +64,17 @@ screener:
       spread_pct:             {category: liquidity, weight: 1, direction: lower}   # bid-ask spread on major exchanges
       exchanges_count:        {category: liquidity, weight: 1, direction: higher}  # distinct exchanges (first 100 tickers)
       major_exchanges_count:  {category: liquidity, weight: 1, direction: higher}  # of screener.coingecko.major_exchanges
-      tvl_mcap:               {category: fundamentals, weight: 1, direction: higher}  # protocol (else chain) TVL / mcap
+      # Protocol tokens (DefiLlama protocol): cash flow and deposits relative to the token's market cap.
+      tvl_mcap:               {category: fundamentals, weight: 1, direction: higher}  # protocol TVL / mcap
       fees_mcap:              {category: fundamentals, weight: 1, direction: higher}  # fees 30d x 12 / mcap
       revenue_mcap:           {category: fundamentals, weight: 1, direction: higher}  # revenue 30d x 12 / mcap
       fees_trend:             {category: fundamentals, weight: 0.5, direction: higher}  # fees last 30d / 30d before
       tvl_change_30d:         {category: fundamentals, weight: 0.5, direction: higher}  # protocol TVL change, %
+      # Coins of their own blockchain (BTC, ETH, SOL...): network usage in absolute terms, compared among chains
+      # only (user decision 2026-10-12: fee yield on market cap is the wrong yardstick for these).
+      chain_tvl:              {category: fundamentals, weight: 1, direction: higher}  # value locked on the chain, USD
+      chain_fees:             {category: fundamentals, weight: 1, direction: higher}  # fees paid on the chain, 30d, USD
+      chain_fees_trend:       {category: fundamentals, weight: 0.5, direction: higher}  # chain fees 30d vs previous 30d
       commits_90d:            {category: development, weight: 1, direction: higher}
       contributors_90d:       {category: development, weight: 1, direction: higher}
       active_weeks_1y:        {category: development, weight: 1, direction: higher}  # weeks with commits (of 52)
@@ -79,6 +87,9 @@ screener:
       rel_change_200d:        {category: momentum, weight: 1, direction: higher}    # price change 200d minus BTC's
       ath_distance:           {category: momentum, weight: 0.5, direction: higher}  # % below all-time high (-80 < -10)
     info_metrics: [rsi_14, volatility_90d, watchlist_mcap]   # computed and shown, never scored
+    missing_policy:                 # when a coin has NO source for a category (not just a missing value)
+      fundamentals: exclude         # DefiLlama tracks no protocol or chain for it -> left out, weight spread over the rest
+      development: zero             # no public code repository listed on CoinGecko -> 0 (a fact, not a gap)
     filters:                        # hard rules: a coin failing one is ranked but does not pass
       min_age_days: 365             # lower bound: earliest of ATH/ATL date, genesis date, first stored price
       min_major_volume_24h_usd: 250000

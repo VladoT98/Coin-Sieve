@@ -1,0 +1,90 @@
+# v4 screener: once a day, fetch data (CoinGecko Demo key, DefiLlama, GitHub), compute the Quality score and
+# publish the review page. Needs the repository secret COINGECKO_DEMO_KEY (Settings > Secrets and variables >
+# Actions). The database lives on the `screener-state` branch (one commit, overwritten each run); its full
+# history is kept as a daily gzipped copy on the monthly GitHub Release `history-YYYY-MM` (never deleted).
+name: Daily screener
+
+on:
+  schedule:
+    - cron: "20 5 * * *"     # 05:20 UTC daily (GitHub may start scheduled runs late)
+  workflow_dispatch:         # "Run workflow" button on the Actions tab
+
+permissions:
+  contents: write   # push screener-state, create releases
+  actions: write    # start the site rebuild afterwards
+
+concurrency:
+  group: daily-screener
+  cancel-in-progress: false
+
+jobs:
+  screener:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Restore the screener database
+        run: |
+          mkdir -p data
+          if git ls-remote --exit-code --heads origin screener-state >/dev/null; then
+            git clone --depth 1 --branch screener-state "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/ss
+            cp /tmp/ss/screener.db data/screener.db
+          else
+            echo "No screener-state branch yet: starting with an empty database."
+          fi
+
+      # GitHub data uses the built-in token (1,000 calls/hour) -> fewer owners per run than locally.
+      - name: Fetch data (budgeted)
+        run: python -u sieve.py fetch --max-owners 60
+        continue-on-error: true
+        env:
+          COINGECKO_DEMO_KEY: ${{ secrets.COINGECKO_DEMO_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Quality score + review page
+        run: |
+          mkdir -p out
+          python -u sieve.py score --sensitivity --html out/quality.html --csv out/quality-score.csv
+
+      - name: API budget
+        run: python sieve.py budget
+
+      - name: Save the database to the screener-state branch
+        if: always()
+        run: |
+          [ -f data/screener.db ] || exit 0
+          rm -rf /tmp/push && mkdir -p /tmp/push
+          cp data/screener.db /tmp/push/
+          [ -f out/quality.html ] && cp out/quality.html out/quality-score.csv /tmp/push/
+          cd /tmp/push
+          git init -q -b screener-state
+          git config user.name "coin-sieve-bot"
+          git config user.email "coin-sieve-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screener state $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screener-state
+
+      - name: Daily history backup (GitHub Release asset)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f data/screener.db ] || exit 0
+          python sieve.py backup --out backup
+          tag="history-$(date -u +%Y-%m)"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "Screener history $(date -u +%Y-%m)" \
+            --notes "Daily gzipped copies of data/screener.db (v4 screener). Never deleted: history is a core asset."
+          gh release upload "$tag" backup/screener-*.db.gz --clobber
+
+      - name: Rebuild the site with the new page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

@@ -89,6 +89,15 @@ A Solana token screener product, aiming for revenue:
   only) and the review page `data/reports/quality-score-<date>.html` (sent to the user instead of asking them to
   run commands — user decision 2026-10-12: never ask the user to use PowerShell; production runs on GitHub).
   "Quality score" is the allowed product term; disclaimer "Educational information only, not investment advice."
+  Fundamentals (user decision 2026-10-12): protocol tokens by fees/revenue/TVL relative to mcap; coins of their own
+  chain by network usage (chain TVL, chain fees, absolute, compared among chains). `missing_policy`: not tracked by
+  DefiLlama → Fundamentals left out (weight spread); no public repo → Development 0. `github.owner_overrides` fixes
+  stale CoinGecko GitHub links (solana → anza-xyz). DefiLlama project URL counts as a website.
+- **v4 hosting:** `.github/workflows/screener.yml` (daily 05:20 UTC + Run workflow button) restores
+  `data/screener.db` from branch `screener-state`, runs fetch → score, pushes the DB + `quality.html` back
+  (force-pushed single commit), uploads the daily gzipped DB to Release `history-YYYY-MM`, then triggers `site.yml`,
+  which copies `quality.html` into the site (sidebar link "Quality score", static site only). Needs repo secret
+  `COINGECKO_DEMO_KEY`; GitHub calls use the Actions token (1,000/h → `--max-owners 60`).
 - **v3 multi-chain (branch `multichain`, 2026-10-11):** `python sieve.py run` defaults to `--tiers coverage`: universe = CoinGecko `coins/markets` down to `coverage.scope_min_mcap_usd`; criteria = not in `coverage.exclude_categories`, mcap, 24h volume, age lower bound, `min_exchanges`, website/docs. Tokens are keyed by **CoinGecko id** (store key space `coingecko.CHAIN = "coingecko"`, URLs `#/token/<id>`); old Solana-mint members are closed once without events. The table's 7-day line comes from the same markets call (`sparkline_in_7d`; no GeckoTerminal for coverage). `python sieve.py profiles [--max N]` (CoinGecko `coins/{id}` with tickers + DexScreener info fallback for links + homepage scan + 1-year chart when age is unproven; daily, ~25 tokens/run) and `python sieve.py holders [--force]` (Solana-issued tokens only: RugCheck top 20 + Solana RPC; daily). Order on a fresh DB: `run` → `profiles` + `holders` → `run`. The website reads only from the DB/logo cache (market strip thread is the exception until Stage E). All site texts live in `coinsieve/site_text.yaml`. Lines below describe the v2 screener and are rewritten in Stage G.
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).

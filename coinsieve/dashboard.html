@@ -331,6 +331,7 @@ const COUNTS = ["ok", "blocked", "error", "listed"];   // link statuses that mea
 const ICONS = {  // Lucide-style strokes, static markup only
   tokens: ["M3 3v18h18", "M7 14l4-4 4 4 5-6"],
   methodology: ["M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20", "M8 7h8", "M8 11h6"],
+  quality: ["M4 20h16", "M7 16V10", "M12 16V5", "M17 16v-8"],
 };
 function icon(key, size) {
   const ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg");
@@ -605,7 +606,9 @@ function parseRoute() {
 addEventListener("hashchange", () => { parseRoute(); hideTip(); renderAll(); });
 function renderNav() {
   const nav = $("nav"); nav.replaceChildren();
-  for (const [key, href, label, count] of [["tokens", "#/tokens", T.nav.tokens, S.members], ["methodology", "#/methodology", T.nav.methodology, null]]) {
+  const items = [["tokens", "#/tokens", T.nav.tokens, S.members], ["methodology", "#/methodology", T.nav.methodology, null]];
+  if (window.CS_STATIC) items.push(["quality", "quality.html", T.nav.quality, null]);   // daily page from the v4 screener
+  for (const [key, href, label, count] of items) {
     const on = route.name === key || (key === "tokens" && route.name === "token");
     const a = el("a", on ? "on" : ""); a.href = href; a.title = label; if (on) a.setAttribute("aria-current", "page");
     const ico = el("span", "ico"); ico.append(icon(key, 16)); a.append(ico, el("span", "lbl", label)); if (count != null) a.append(el("span", "cnt", String(count)));

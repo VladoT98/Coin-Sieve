@@ -18,6 +18,8 @@ SOURCE_OF = {
     "major_volume_mcap": "major_volume_24h_usd", "depth_mcap": "depth_2pct_usd", "spread_pct": "spread_pct",
     "exchanges_count": "exchanges_count", "major_exchanges_count": "major_exchanges_count",
     "fees_mcap": "fees_30d_usd", "revenue_mcap": "revenue_30d_usd", "fees_trend": "fees_30d_usd",
+    "tvl_mcap": "protocol_tvl_usd", "chain_tvl": "chain_tvl_usd", "chain_fees": "chain_fees_30d_usd",
+    "chain_fees_trend": "chain_fees_30d_usd",
     "tvl_change_30d": "protocol_tvl_change_30d_pct", "commits_90d": "commits_90d",
     "contributors_90d": "contributors_90d", "active_weeks_1y": "active_weeks_1y",
     "days_since_push": "days_since_push", "circulating_ratio": "circ_supply", "fdv_mcap": "fdv_usd",
@@ -89,7 +91,6 @@ def derive(raw, prices, btc_raw, as_of):
     """raw: {metric: {"value", "text", "source_url"}} (latest observations); prices: [(date, price, mcap)] oldest
     first. Returns ({metric: value}, {metric: source_url}, facts) - facts feed the filters."""
     mcap = _v(raw, "mcap_usd")
-    tvl = max([t for t in (_v(raw, "protocol_tvl_usd"), _v(raw, "chain_tvl_usd")) if t is not None], default=None)
     supply_cap = _v(raw, "max_supply") or _v(raw, "total_supply")
     fees, prev = _v(raw, "fees_30d_usd"), _v(raw, "fees_prev30d_usd")
     closes = [p for _, p, _ in prices if p]
@@ -104,12 +105,17 @@ def derive(raw, prices, btc_raw, as_of):
         "spread_pct": _v(raw, "spread_pct"),
         "exchanges_count": _v(raw, "exchanges_count"),
         "major_exchanges_count": _v(raw, "major_exchanges_count"),
-        "tvl_mcap": _ratio(tvl, mcap),
+        # protocol tokens: cash flow and deposits relative to the token's value
+        "tvl_mcap": _ratio(_v(raw, "protocol_tvl_usd"), mcap),
         "fees_mcap": _ratio(fees * 12, mcap) if fees is not None else None,
         "revenue_mcap": _ratio(_v(raw, "revenue_30d_usd") * 12, mcap) if _v(raw, "revenue_30d_usd") is not None
         else None,
         "fees_trend": fees / prev if fees is not None and prev else None,
         "tvl_change_30d": _v(raw, "protocol_tvl_change_30d_pct"),
+        # coins of their own blockchain: network usage (absolute), compared among chains only
+        "chain_tvl": _v(raw, "chain_tvl_usd"),
+        "chain_fees": _v(raw, "chain_fees_30d_usd"),
+        "chain_fees_trend": _ratio(_v(raw, "chain_fees_30d_usd"), _v(raw, "chain_fees_prev30d_usd")),
         "commits_90d": _v(raw, "commits_90d"),
         "contributors_90d": _v(raw, "contributors_90d"),
         "active_weeks_1y": _v(raw, "active_weeks_1y"),
@@ -129,10 +135,6 @@ def derive(raw, prices, btc_raw, as_of):
     }
     src = {k: (raw.get(SOURCE_OF.get(k, "mcap_usd")) or raw.get("mcap_usd") or {}).get("source_url")
            for k, v in m.items() if v is not None}
-    for k in ("tvl_mcap",):
-        if m[k] is not None:
-            src[k] = (raw.get("protocol_tvl_usd") if tvl == _v(raw, "protocol_tvl_usd") else
-                      raw.get("chain_tvl_usd") or {}).get("source_url")
     for k in ("supply_change_30d", "supply_change_1y", "rsi_14", "volatility_90d"):
         if m[k] is not None:
             src[k] = (raw.get("price_usd") or {}).get("source_url")   # computed from stored CoinGecko prices
@@ -141,7 +143,8 @@ def derive(raw, prices, btc_raw, as_of):
     facts = {
         "mcap": mcap, "major_volume": _v(raw, "major_volume_24h_usd"),
         "exchanges": _v(raw, "exchanges_count"),
-        "website_or_docs": bool(_v(raw, "has_website") or _v(raw, "has_whitepaper"))
+        "website_or_docs": bool(_v(raw, "has_website") or _v(raw, "has_whitepaper")
+                                or (raw.get("defillama_website") or {}).get("text"))
         if "has_website" in raw or "has_whitepaper" in raw else None,
         "starts": starts, "first_price": first_price,
     }
@@ -183,17 +186,38 @@ def validate(scfg):
             errs.append(f"metric {mid}: unknown category {m.get('category')}")
         if m.get("direction") not in ("higher", "lower"):
             errs.append(f"metric {mid}: direction must be higher/lower")
-        if mid not in SOURCE_OF and mid not in ("tvl_mcap", "supply_change_30d", "supply_change_1y"):
+        if mid not in SOURCE_OF and mid not in ("supply_change_30d", "supply_change_1y"):
             errs.append(f"metric {mid}: no formula in scoring.py")
     for cat in cats:
         if not any(m.get("category") == cat for m in scfg["metrics"].values()):
             errs.append(f"category {cat} has no metrics")
+    for cat, policy in (scfg.get("missing_policy") or {}).items():
+        if cat not in cats or policy not in POLICY_FLAG:
+            errs.append(f"missing_policy {cat}: {policy} (categories: {', '.join(cats)}; policies: exclude, zero)")
+    if len([p for p in (scfg.get("missing_policy") or {}).values() if p == "exclude"]) >= len(cats):
+        errs.append("missing_policy cannot exclude every category")
     return errs
 
 
+def no_source(raw):
+    """Categories for which the coin has no data source at all (not just a missing value):
+    fundamentals - DefiLlama tracks neither a protocol nor a chain for it;
+    development - CoinGecko lists no code repository and no override gave one (profile must be fetched)."""
+    out = set()
+    if not any(k in raw for k in ("protocol_tvl_usd", "chain_tvl_usd", "defillama_group")):
+        out.add("fundamentals")
+    if _v(raw, "has_github") == 0 and "commits_90d" not in raw:
+        out.add("development")
+    return out
+
+
+POLICY_FLAG = {"exclude": "not applicable", "zero": "no public code repository"}
+
+
 def score(coins, scfg, weights=None):
-    """coins: {cg_id: {"metrics": {...}, "passes": bool}}. Returns {cg_id: {"total", "categories", "pct"}}.
-    weights: optional category weights (sensitivity checks); default scfg["categories"]."""
+    """coins: {cg_id: {"metrics": {...}, "no_source": set (optional)}}. Returns {cg_id: {"total", "categories",
+    "pct"}}. A category in no_source follows scfg["missing_policy"]: "exclude" leaves it out of the total (its
+    weight is spread over the others), "zero" scores it 0. weights: optional (sensitivity checks)."""
     weights = weights or scfg["categories"]
     mdefs = scfg["metrics"]
     pct = {}
@@ -205,6 +229,12 @@ def score(coins, scfg, weights=None):
     for cid in coins:
         cats = {}
         for cat in weights:
+            policy = (scfg.get("missing_policy") or {}).get(cat)
+            if policy in POLICY_FLAG and cat in coins[cid].get("no_source", ()):
+                n_total = sum(1 for d in mdefs.values() if d["category"] == cat)
+                cats[cat] = {"score": 0.0 if policy == "zero" else None, "used": 0, "of": n_total,
+                             "flag": POLICY_FLAG[policy]}
+                continue
             used = [(pct[mid][cid], d["weight"]) for mid, d in mdefs.items()
                     if d["category"] == cat and mid in pct and cid in pct[mid]]
             n_total = sum(1 for d in mdefs.values() if d["category"] == cat)
@@ -213,7 +243,8 @@ def score(coins, scfg, weights=None):
                              "used": len(used), "of": n_total, "flag": None}
             else:
                 cats[cat] = {"score": 50.0, "used": len(used), "of": n_total, "flag": "not enough data"}
-        total = sum(cats[c]["score"] * w for c, w in weights.items()) / sum(weights.values())
+        scored = {c: w for c, w in weights.items() if cats[c]["score"] is not None}
+        total = sum(cats[c]["score"] * w for c, w in scored.items()) / sum(scored.values())
         out[cid] = {"total": total, "categories": cats,
                     "pct": {mid: pct[mid][cid] for mid in pct if cid in pct[mid]}}
     return out

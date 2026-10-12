@@ -9,6 +9,8 @@ Matching (no guessing by name):
 - /protocols: only for page slugs (`id` -> `slug`); lite has none.
 - /overview/fees (fees and revenue): no gecko id; `defillamaId` = lite `defillamaId`. Chains appear with
   `protocolType: chain` and are matched to /v2/chains by name.
+- Chain coins get `chain_tvl_usd` + `chain_fees_*` / `chain_revenue_*` (network usage), never mixed into the
+  protocol `fees_*` (protocol cash flow); scoring treats them differently.
 - /v2/chains: `gecko_id` per chain; one gecko id can have several rows (BNB: "BSC" $5.6B and "Binance" $0) -> the
   row with the highest TVL wins.
 - /hacks: `defillamaId` -> group members.
@@ -34,11 +36,14 @@ def protocol_groups(lite, slugs):
     for p in protocols:
         if p.get("parentProtocol"):
             by_parent[p["parentProtocol"]].append(p)
-    parent_gecko = {pp["id"]: pp.get("gecko_id") for pp in lite.get("parentProtocols") or [] if pp.get("id")}
+    parents = [pp for pp in lite.get("parentProtocols") or [] if isinstance(pp, dict) and pp.get("id")]
+    parent_gecko = {pp["id"]: pp.get("gecko_id") for pp in parents}
+    parent_url = {pp["id"]: pp.get("url") for pp in parents}
     groups = {}
 
-    def add(gid, members, slug):
-        g = groups.setdefault(gid, {"ids": set(), "slug": slug, "members": []})
+    def add(gid, members, slug, url=None):
+        g = groups.setdefault(gid, {"ids": set(), "slug": slug, "members": [], "url": None})
+        g["url"] = g["url"] or url or next((m.get("url") for m in members if m.get("url")), None)
         for m in members:
             if str(m.get("defillamaId")) not in g["ids"]:
                 g["ids"].add(str(m.get("defillamaId")))
@@ -49,13 +54,13 @@ def protocol_groups(lite, slugs):
 
     for parent, gid in parent_gecko.items():
         if gid:
-            add(gid, children(parent, gid), parent.split("#", 1)[-1])
+            add(gid, children(parent, gid), parent.split("#", 1)[-1], parent_url.get(parent))
     for p in protocols:
         gid, parent = p.get("geckoId"), p.get("parentProtocol")
         if not gid:
             continue
         if parent and parent_gecko.get(parent) in (None, gid):
-            add(gid, children(parent, gid), parent.split("#", 1)[-1])
+            add(gid, children(parent, gid), parent.split("#", 1)[-1], parent_url.get(parent))
         else:
             add(gid, [p], slugs.get(str(p.get("defillamaId"))) or str(p.get("defillamaId")))
     return groups
@@ -81,13 +86,14 @@ def coin_metrics(cg_ids, lite, slugs, chains, fees, revenue, hacks):
     for cid in cg_ids:
         g, chain = groups.get(cid), chain_by_gecko.get(cid)
         parts = []
-        proto_fees = None
         if g:
             p = {"protocol_tvl_usd": _sum(_num(x.get("tvl")) for x in g["members"]),
                  "protocol_tvl_change_7d_pct": _change(g["members"], "tvl", "tvlPrevWeek"),
                  "protocol_tvl_change_30d_pct": _change(g["members"], "tvl", "tvlPrevMonth"),
                  "defillama_category": next((x.get("category") for x in g["members"] if x.get("category")), None),
-                 "defillama_group": g["slug"]}
+                 "defillama_group": g["slug"],
+                 "defillama_website": g["url"] if isinstance(g["url"], str) and g["url"].startswith("http")
+                 else None}
             proto_fees = _fee_metrics([r for r in fees if str(r.get("defillamaId")) in g["ids"]],
                                       [r for r in revenue if str(r.get("defillamaId")) in g["ids"]])
             hits = [h for h in hacks if str(h.get("defillamaId")) in g["ids"]]
@@ -97,28 +103,26 @@ def coin_metrics(cg_ids, lite, slugs, chains, fees, revenue, hacks):
             if p["protocol_tvl_usd"] or proto_fees or not chain:
                 p.update(proto_fees or {})
                 parts.append((p, f"https://defillama.com/protocol/{g['slug']}"))
-            else:
-                proto_fees = None
-        if chain:
+        if chain:   # network usage of the coin's own chain, kept apart from protocol fees (chain_fees_*)
             c = {"chain_tvl_usd": _num(chain.get("tvl"))}
-            if not proto_fees:   # fees of the protocol when it has them, else the chain's own fees
-                is_chain = lambda r: r.get("protocolType") == "chain" and r.get("name") == chain.get("name")  # noqa: E731
-                c.update(_fee_metrics([r for r in fees if is_chain(r)], [r for r in revenue if is_chain(r)]) or {})
+            is_chain = lambda r: r.get("protocolType") == "chain" and r.get("name") == chain.get("name")  # noqa: E731
+            c.update(_fee_metrics([r for r in fees if is_chain(r)], [r for r in revenue if is_chain(r)], "chain_")
+                     or {})
             parts.append((c, f"https://defillama.com/chain/{chain.get('name')}"))
         if parts:
             out[cid] = parts
     return out
 
 
-def _fee_metrics(fee_rows, rev_rows):
-    """fees_/revenue_ {24h,7d,30d,1y,prev30d}_usd summed over matched rows; None when nothing matched."""
+def _fee_metrics(fee_rows, rev_rows, prefix=""):
+    """<prefix>fees_/revenue_ {24h,7d,30d,1y,prev30d}_usd summed over matched rows; None when nothing matched."""
     if not fee_rows and not rev_rows:
         return None
     m = {}
-    for prefix, rows in (("fees", fee_rows), ("revenue", rev_rows)):
+    for kind, rows in (("fees", fee_rows), ("revenue", rev_rows)):
         for field, key in (("24h", "total24h"), ("7d", "total7d"), ("30d", "total30d"), ("1y", "total1y"),
                            ("prev30d", "total60dto30d")):
-            m[f"{prefix}_{field}_usd"] = _sum(_num(r.get(key)) for r in rows) if rows else None
+            m[f"{prefix}{kind}_{field}_usd"] = _sum(_num(r.get(key)) for r in rows) if rows else None
     return m
 
 

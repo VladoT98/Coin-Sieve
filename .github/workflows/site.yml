@@ -90,6 +90,13 @@ jobs:
       - name: Build static site
         run: python sieve.py export --out site
 
+      - name: Add the Quality score page (made by the daily screener workflow)
+        run: |
+          if git ls-remote --exit-code --heads origin screener-state >/dev/null; then
+            git clone --depth 1 --branch screener-state "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" /tmp/screener
+            if [ -f /tmp/screener/quality.html ]; then cp /tmp/screener/quality.html site/quality.html; fi
+          fi
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
