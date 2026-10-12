@@ -1,0 +1,10 @@
+{
+ "_url": "https://api.coingecko.com/api/v3/ping",
+ "_status": 200,
+ "_rate_headers": {
+  "Cache-Control": "max-age=0, private, must-revalidate"
+ },
+ "sample": {
+  "gecko_says": "(V3) To the Moon!"
+ }
+}

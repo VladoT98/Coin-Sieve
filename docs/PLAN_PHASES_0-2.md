@@ -24,13 +24,18 @@ daily workflow next to `site.yml`.
 paste them into `.env` as `COINGECKO_DEMO_KEY=` and `GITHUB_TOKEN=` (I add the placeholders to `.env.example`).
 In CI the built-in Actions token is enough for GitHub (1,000 calls/hour).
 
-### 1.1 Backup and clean-up (asks you again right before deleting)
-1. Download the live DB from the `state` branch → `data/backup/coinsieve-2026-10-xx.db`, and create a git tag
-   `v3-final` on `main`.
-2. On the branch, delete the Solana tiers: `tiers/`, `rugcheck.py`, `jupiter.py`, `dexscreener.py`,
-   `filters.py`, `ranking.py`, `funnel.py`, `card.py`, `whatif.py`, their config sections, CLI commands and tests.
-   Old tables in `coinsieve.db` stay (dropping them = data change → separate question).
-3. All tests still pass; the v3 coverage site (`run`, `profiles`, `export`) still works.
+### 1.1 Backup ✅ (2026-10-12)
+1. Live DB from the `state` branch → `data/backup/coinsieve-state-2026-10-12.db` (+ old local DB); tag `v3-final`.
+2. Deleting the Solana tiers moved to **Phase 5** (user decision): the live dashboard imports them (what-if,
+   funnel, digest, holders → RugCheck/Solana RPC). v4 code never imports them.
+
+### Status 2026-10-12: 1.2–1.7 built (`coinsieve/screener/`, `tests/test_screener.py`). Changes vs. the plan:
+- DefiLlama needs `/lite/protocols2`: big protocols (Uniswap, Chainlink, Hyperliquid…) have their CoinGecko id
+  only on the parent entry. `/protocols` is still used for page slugs.
+- CoinGecko `developer_data` is null → GitHub is the only development source. Derivatives are keyed by symbol
+  only → not fetched (optional later).
+- Extra: major-exchange volume (small exchanges report inflated volume), TVL change 30d (lite list).
+- GitHub Release upload of backups moves to Phase 3/4 (CI token); `sieve.py backup` writes the file locally now.
 
 ### 1.2 Probes first (CLAUDE.md rule: never guess field names)
 `scripts/probe_v4.py` calls each endpoint once and saves a trimmed sample to `docs/api_samples/`; the

@@ -1,0 +1,48 @@
+{
+ "_url": "https://api.github.com/repos/aave/aave-v3-core/stats/contributors",
+ "_status": 200,
+ "_rate_headers": {
+  "Cache-Control": "private, max-age=60, s-maxage=60",
+  "X-RateLimit-Limit": "5000",
+  "X-RateLimit-Remaining": "4995",
+  "X-RateLimit-Reset": "1791803488",
+  "X-RateLimit-Used": "5",
+  "X-RateLimit-Resource": "core"
+ },
+ "sample": [
+  {
+   "total": 1,
+   "weeks": [
+    {
+     "w": 1627171200,
+     "a": 0,
+     "d": 0,
+     "c": 0
+    },
+    "... 271 more"
+   ],
+   "author": {
+    "login": "defispartan",
+    "id": 26660211,
+    "node_id": "MDQ6VXNlcjI2NjYwMjEx",
+    "avatar_url": "https://avatars.githubusercontent.com/u/26660211?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/defispartan",
+    "html_url": "https://github.com/defispartan",
+    "followers_url": "https://api.github.com/users/defispartan/followers",
+    "following_url": "https://api.github.com/users/defispartan/following{/other_user}",
+    "gists_url": "https://api.github.com/users/defispartan/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/defispartan/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/defispartan/subscriptions",
+    "organizations_url": "https://api.github.com/users/defispartan/orgs",
+    "repos_url": "https://api.github.com/users/defispartan/repos",
+    "events_url": "https://api.github.com/users/defispartan/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/defispartan/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+   }
+  },
+  "... 25 more"
+ ]
+}

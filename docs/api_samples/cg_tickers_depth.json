@@ -1,0 +1,84 @@
+{
+ "_url": "https://api.coingecko.com/api/v3/coins/aave/tickers",
+ "_status": 200,
+ "_rate_headers": {
+  "link": "<https://api.coingecko.com/api/v3/coins/aave/tickers?depth=true&order=volume_desc&page=3>; rel=\"last\", <https://api.coingecko.com/api/v3/coins/aave/tickers?depth=true&order=volume_desc&page=2>; rel=\"next\"",
+  "Cache-Control": "max-age=30, public, must-revalidate, s-maxage=60"
+ },
+ "sample": {
+  "name": "Aave",
+  "tickers": [
+   {
+    "base": "AAVE",
+    "target": "USDT",
+    "market": {
+     "name": "CoinUp.io",
+     "identifier": "coinup",
+     "has_trading_incentive": false
+    },
+    "last": 166.42,
+    "volume": 3677470.8831,
+    "cost_to_move_up_usd": 1630879.5542385597,
+    "cost_to_move_down_usd": 1668704.562216413,
+    "converted_last": {
+     "btc": 0.0019909,
+     "eth": 0.06520118,
+     "usd": 166.28
+    },
+    "converted_volume": {
+     "btc": 7321,
+     "eth": 239775,
+     "usd": 611494045
+    },
+    "trust_score": null,
+    "bid_ask_spread_percentage": 0.018029,
+    "timestamp": "2026-10-12T10:08:40+00:00",
+    "last_traded_at": "2026-10-12T10:08:40+00:00",
+    "last_fetch_at": "2026-10-12T10:08:40+00:00",
+    "is_anomaly": false,
+    "is_stale": false,
+    "trade_url": "https://www.coinup.io/en_US/trade/AAVE_USDT",
+    "token_info_url": null,
+    "coin_id": "aave",
+    "target_coin_id": "tether",
+    "coin_mcap_usd": 2565708720.8785048
+   },
+   {
+    "base": "AAVE",
+    "target": "USDT",
+    "market": {
+     "name": "BitDelta",
+     "identifier": "bitdelta",
+     "has_trading_incentive": false
+    },
+    "last": 166.43,
+    "volume": 222905.366,
+    "cost_to_move_up_usd": 20982.13688964297,
+    "cost_to_move_down_usd": 20571.30839127575,
+    "converted_last": {
+     "btc": 0.00199102,
+     "eth": 0.0652051,
+     "usd": 166.29
+    },
+    "converted_volume": {
+     "btc": 443.81,
+     "eth": 14535,
+     "usd": 37067185
+    },
+    "trust_score": null,
+    "bid_ask_spread_percentage": 0.540443,
+    "timestamp": "2026-10-12T10:08:39+00:00",
+    "last_traded_at": "2026-10-12T10:08:39+00:00",
+    "last_fetch_at": "2026-10-12T10:08:40+00:00",
+    "is_anomaly": false,
+    "is_stale": false,
+    "trade_url": "https://bitdelta.com/en/trade/AAVE_USDT",
+    "token_info_url": null,
+    "coin_id": "aave",
+    "target_coin_id": "tether",
+    "coin_mcap_usd": 2565708720.8785048
+   },
+   "... 98 more"
+  ]
+ }
+}

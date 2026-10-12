@@ -14,6 +14,9 @@ Usage:
     python sieve.py track-record                                        # what happened after tier entries
     python sieve.py charts [--max-calls N]                              # refresh price sparklines (also after run)
     python sieve.py web                                                 # private dashboard (127.0.0.1:8765)
+    python sieve.py fetch [--steps a,b] [--max-profiles N] [--max-owners N]   # v4 data pipeline (budgeted)
+    python sieve.py budget                                              # v4 API calls this month
+    python sieve.py backup [--out data/backup]                          # v4 gzipped DB copy
 """
 import argparse
 import logging
@@ -482,6 +485,16 @@ def main():
     p_web.add_argument("--port", type=int, default=8765)
     p_web.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
     p_web.add_argument("--public", action="store_true", help="read-only public mode (no saving filters, no runs)")
+    # ---- v4 screener (docs/PRODUCT.md) ----
+    p_fetch = sub.add_parser("fetch", help="v4: universe + CoinGecko + DefiLlama + GitHub data (budgeted, cached)")
+    p_fetch.add_argument("--steps", default=None,
+                         help="comma list of universe,defillama,profiles,github,backfill (default: all)")
+    p_fetch.add_argument("--max-profiles", type=int, default=None, help="CoinGecko coin profiles this run")
+    p_fetch.add_argument("--max-owners", type=int, default=None, help="GitHub owners this run")
+    p_fetch.add_argument("--max-backfill", type=int, default=None, help="365-day price backfills this run")
+    sub.add_parser("budget", help="v4: API calls this month per provider and the CoinGecko projection")
+    p_bak = sub.add_parser("backup", help="v4: gzipped copy of the screener database (history backup)")
+    p_bak.add_argument("--out", default="data/backup")
     args = parser.parse_args()
     command = args.command or "run"
 
@@ -518,6 +531,17 @@ def main():
     if command == "web":
         from coinsieve.dashboard import serve
         return serve(args.config, args.port, open_browser=not args.no_browser, public=args.public)
+    if command == "fetch":
+        from coinsieve.screener import pipeline
+        steps = [x.strip() for x in args.steps.split(",") if x.strip()] if args.steps else None
+        return pipeline.run_fetch(cfg, dotenv_values(".env"), steps=steps, max_profiles=args.max_profiles,
+                                  max_owners=args.max_owners, max_backfill=args.max_backfill)
+    if command == "budget":
+        from coinsieve.screener import pipeline
+        return pipeline.budget_report(cfg)
+    if command == "backup":
+        from coinsieve.screener import pipeline
+        return pipeline.backup(cfg, args.out)
 
     # Chat id is not secret: dry runs use it too, so dedupe reflects the target chat.
     env = dotenv_values(".env")

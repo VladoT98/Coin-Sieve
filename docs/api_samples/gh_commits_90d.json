@@ -1,0 +1,13 @@
+{
+ "_url": "https://api.github.com/repos/aave/aave-v3-core/commits",
+ "_status": 200,
+ "_rate_headers": {
+  "Cache-Control": "private, max-age=60, s-maxage=60",
+  "X-RateLimit-Limit": "5000",
+  "X-RateLimit-Remaining": "4997",
+  "X-RateLimit-Reset": "1791803488",
+  "X-RateLimit-Used": "3",
+  "X-RateLimit-Resource": "core"
+ },
+ "sample": []
+}

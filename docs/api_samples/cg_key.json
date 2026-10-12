@@ -1,0 +1,14 @@
+{
+ "_url": "https://api.coingecko.com/api/v3/key",
+ "_status": 401,
+ "_rate_headers": {
+  "Cache-Control": "no-cache"
+ },
+ "sample": {
+  "status": {
+   "timestamp": "2026-10-12T10:10:51.442+00:00",
+   "error_code": 10005,
+   "error_message": "This request is limited to PRO API subscribers. Please visit https://www.coingecko.com/en/api/pricing to subscribe to our API plan to access exclusive endpoints."
+  }
+ }
+}

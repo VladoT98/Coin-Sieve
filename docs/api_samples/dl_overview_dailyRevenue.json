@@ -1,0 +1,267 @@
+{
+ "_url": "https://api.llama.fi/overview/fees",
+ "_status": 200,
+ "_rate_headers": {},
+ "sample": {
+  "totalDataChart": [],
+  "totalDataChartBreakdown": [],
+  "breakdown24h": null,
+  "breakdown30d": null,
+  "chain": null,
+  "allChains": [
+   "Solana",
+   "Ethereum",
+   "... 365 more"
+  ],
+  "total24h": 40219080.88000006,
+  "total48hto24h": 64528045.39999994,
+  "total7d": 306786147.1399997,
+  "total14dto7d": 291142459.69999844,
+  "total30d": 1257688500.2699747,
+  "total60dto30d": 1197839361.3399804,
+  "total1y": 13498068007.481295,
+  "total7DaysAgo": 39130741.370000035,
+  "total30DaysAgo": 44394259.00000004,
+  "totalAllTime": 64934538419.87003,
+  "change_1d": -37.67,
+  "change_7d": 2.78,
+  "change_1m": -9.4,
+  "change_7dover7d": 5.37,
+  "change_30dover30d": 5,
+  "protocols": [
+   {
+    "total24h": 0,
+    "total48hto24h": 0,
+    "total7d": 0,
+    "total14dto7d": 0.31,
+    "total30d": 0.31,
+    "total60dto30d": 0,
+    "total1y": 1350192.44,
+    "annualized1y": 1350192.44,
+    "total7DaysAgo": 0,
+    "total30DaysAgo": 0,
+    "totalAllTime": 17729648.439999998,
+    "average1y": 3699.1573698630136,
+    "monthlyAverage1y": 112602.35033863015,
+    "change_7dover7d": -100,
+    "breakdown24h": {
+     "ethereum": {
+      "WBTC": 0
+     }
+    },
+    "breakdown30d": {
+     "ethereum": {
+      "WBTC": 0.31
+     }
+    },
+    "defillamaId": "2",
+    "name": "WBTC",
+    "displayName": "WBTC",
+    "module": "wbtc",
+    "category": "Bridge",
+    "logo": "https://icons.llamao.fi/icons/protocols/wbtc",
+    "chains": [
+     "Ethereum"
+    ],
+    "protocolType": "protocol",
+    "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/fees/wbtc",
+    "methodology": {
+     "Fees": "Minting and buring fees paid by users.",
+     "Revenue": "All fees are revenue.",
+     "ProtocolRevenue": "All revenue collected by protocol."
+    },
+    "slug": "wbtc",
+    "id": "2"
+   },
+   {
+    "total24h": 6474,
+    "total48hto24h": 6822,
+    "total7d": 235510,
+    "total14dto7d": 560430,
+    "total30d": 1405054,
+    "total60dto30d": 1167481,
+    "total1y": 26625169,
+    "annualized1y": 26625169,
+    "total7DaysAgo": 4921,
+    "total30DaysAgo": 15644,
+    "totalAllTime": 349095667,
+    "average1y": 72945.66849315069,
+    "monthlyAverage1y": 2220466.148931507,
+    "change_1d": -5.1,
+    "change_7d": 31.56,
+    "change_1m": -58.62,
+    "change_7dover7d": -57.98,
+    "change_30dover30d": 20.35,
+    "breakdown24h": {
+     "arbitrum": {
+      "Curve DEX": 80
+     },
+     "optimism": {
+      "Curve DEX": 50
+     },
+     "bsc": {
+      "Curve DEX": 3.26
+     },
+     "polygon": {
+      "Curve DEX": 7.56
+     },
+     "base": {
+      "Curve DEX": 108
+     },
+     "xdai": {
+      "Curve DEX": 23
+     },
+     "fraxtal": {
+      "Curve DEX": 86
+     },
+     "sonic": {
+      "Curve DEX": 1.36
+     },
+     "hyperliquid": {
+      "Curve DEX": 0.29
+     },
+     "ethereum": {
+      "Curve DEX": 6553
+     },
+     "ink": {
+      "Curve DEX": 0.01
+     },
+     "unichain": {
+      "Curve DEX": 0
+     },
+     "celo": {
+      "Curve DEX": 0.29
+     },
+     "mantle": {
+      "Curve DEX": 0
+     },
+     "stable": {
+      "Curve DEX": 0
+     },
+     "monad": {
+      "Curve DEX": 34
+     },
+     "robinhood": {
+      "Curve DEX": 0.7
+     },
+     "plasma": {
+      "Curve DEX": 22
+     },
+     "avax": {
+      "Curve DEX": 8.34
+     }
+    },
+    "breakdown30d": {
+     "arbitrum": {
+      "Curve DEX": 2733
+     },
+     "bsc": {
+      "Curve DEX": 610.31
+     },
+     "base": {
+      "Curve DEX": 6325
+     },
+     "polygon": {
+      "Curve DEX": 1635.79
+     },
+     "hyperliquid": {
+      "Curve DEX": 62.61999999999999
+     },
+     "optimism": {
+      "Curve DEX": 911.5
+     },
+     "xdai": {
+      "Curve DEX": 2339
+     },
+     "ethereum": {
+      "Curve DEX": 1384780
+     },
+     "fraxtal": {
+      "Curve DEX": 817.73
+     },
+     "sonic": {
+      "Curve DEX": 7.9799999999999995
+     },
+     "plasma": {
+      "Curve DEX": 1433.25
+     },
+     "robinhood": {
+      "Curve DEX": 299.05000000000007
+     },
+     "ink": {
+      "Curve DEX": 0.4200000000000001
+     },
+     "monad": {
+      "Curve DEX": 2886.91
+     },
+     "unichain": {
+      "Curve DEX": 75.16
+     },
+     "celo": {
+      "Curve DEX": 19.549999999999994
+     },
+     "avax": {
+      "Curve DEX": 115
+     },
+     "mantle": {
+      "Curve DEX": 0
+     },
+     "stable": {
+      "Curve DEX": 0
+     }
+    },
+    "defillamaId": "3",
+    "name": "Curve DEX",
+    "displayName": "Curve DEX",
+    "module": "curve",
+    "category": "Dexs",
+    "logo": "https://icons.llamao.fi/icons/protocols/curve",
+    "chains": [
+     "Ethereum",
+     "Polygon",
+     "... 19 more"
+    ],
+    "protocolType": "protocol",
+    "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/fees/curve.ts",
+    "methodology": {
+     "UserFees": "Swap and liquidity fees paid by traders. Excludes bribes, which are paid by third parties bidding for gauge votes, not by users.",
+     "Fees": "Swap and liquidity fees charged by Curve pools, plus bribes paid to veCRV voters. Fee rates are set per pool - around 0.01%-0.04% on stable pools and up to a few percent on volatile pools.",
+     "Revenue": "The share of pool fees kept by the protocol rather than paid to liquidity providers - usually half of the fee - plus bribes.",
+     "ProtocolRevenue": "10% of the protocol's share of pool fees, sent to the Curve DAO treasury.",
+     "HoldersRevenue": "90% of the protocol's share of pool fees, distributed to veCRV holders, plus all bribes.",
+     "SupplySideRevenue": "The share of pool fees paid to liquidity providers - usually half of the fee."
+    },
+    "parentProtocol": "parent#curve-finance",
+    "slug": "curve-dex",
+    "linkedProtocols": [
+     "Curve Finance",
+     "Curve DEX",
+     "... 3 more"
+    ],
+    "breakdownMethodology": {
+     "Fees": {
+      "CurveDEX Swap Fees": "Swap and liquidity fees charged by Curve pools",
+      "CurveDEX Bribes Rewards": "All bribes rewards collected"
+     },
+     "Revenue": {
+      "CurveDEX Admin Fees": "Fees distributed to veCRV holders and protocol treasury",
+      "CurveDEX Bribes Revenue": "All bribes revenue to holders"
+     },
+     "ProtocolRevenue": {
+      "CurveDEX Admin Fees To Treasury": "Fees allocated to the protocol treasury"
+     },
+     "HoldersRevenue": {
+      "CurveDEX Fees To veCRV Holders": "Fees distributed to veCRV governance token holders",
+      "CurveDEX Bribes Revenue": "All bribes revenue to holders"
+     },
+     "SupplySideRevenue": {
+      "CurveDEX Fees To LPs": "Fees distributed to liquidity providers"
+     }
+    },
+    "hasLabelBreakdown": true,
+    "id": "3"
+   },
+   "... 2629 more"
+  ]
+ }
+}

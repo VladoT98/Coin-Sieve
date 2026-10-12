@@ -3,6 +3,49 @@
 
 chain: solana
 
+# ---- v4 screener (branch quality-score, docs/PRODUCT.md): data pipeline. Scoring rules come in Phase 2. ----
+# Own database + cache; independent of the v2/v3 sections below (those are deleted in Phase 5).
+screener:
+  db_path: data/screener.db
+  cache_dir: data/cache            # raw API responses (gzip), reused within their TTL; safe to delete
+  universe:
+    enter_mcap_usd: 100000000      # a coin joins the universe at >= $100M ...
+    stay_mcap_usd: 90000000        # ... and stays until it drops below $90M (no flapping around $100M)
+    # CoinGecko category ids (checked 2026-10-11). Copy of coverage.exclude_categories so v4 stays independent.
+    exclude_categories: [stablecoins, yield-bearing-stablecoins, wrapped-tokens, bridged-tokens, liquid-staking-tokens,
+                         liquid-restaking-tokens, tokenized-products]
+    exclude_ids: []                # CoinGecko ids excluded by hand (give the reason in a comment)
+    categories_ttl_hours: 168      # category membership lists refreshed weekly
+    max_market_pages: 4            # 250 coins per page; stops early below stay_mcap_usd
+  coingecko:
+    base_url: https://api.coingecko.com/api/v3
+    key_env: COINGECKO_DEMO_KEY    # sent as header x-cg-demo-api-key
+    monthly_budget: 10000          # Demo plan
+    reserve_pct: 20                # last 20% only for the daily markets list
+    min_interval_s: 2.5            # Demo allows ~30/min; no rate-limit headers to read
+    backoff_s: 30
+    markets_ttl_hours: 20          # re-running on the same day costs no calls
+    profile_refresh_days: 7        # coins/{id} + tickers per coin (2 calls), weekly rotation
+    profile_max_per_run: 60        # ~250 coins -> full refresh in ~5 daily runs
+    backfill_days: 365             # one-time daily price/mcap/volume history per coin (Demo max = 365)
+    backfill_max_per_run: 300
+    # Spot exchanges whose tickers count as "major" (CoinGecko market.identifier, seen in BTC tickers 2026-10-12).
+    # Depth, spread and major-exchange volume use only these: small exchanges report inflated volume.
+    major_exchanges: [binance, gdax, kraken, okex, bybit_spot, kucoin, bitget, crypto_com, gate, huobi]
+  defillama:
+    base_url: https://api.llama.fi
+    min_interval_s: 1.0
+    ttl_hours: 20                  # 4 calls per day: protocols, chains, fees, revenue (+ hacks)
+  github:
+    base_url: https://api.github.com
+    token_env: GITHUB_TOKEN
+    min_interval_s: 0.5
+    min_remaining: 300             # stop for this run when fewer calls are left in the hour
+    refresh_days: 7
+    max_owners_per_run: 80         # one owner = 1 repo list + 2 calls per repo
+    repos_per_owner: 5             # most recently pushed, non-fork, non-archived repos of the owner
+    stats_retry_s: 5               # /stats/* answers 202 while GitHub computes them
+
 # ---- coverage list: the established tokens profiled on the website ("Tokens"), every blockchain ----
 # Universe = CoinGecko coins/markets, largest market cap first (user decision 2026-10-11: multi-chain, >= $100M,
 # exclude stablecoins / wrapped / bridged / staked copies and tokenised assets; meme tokens and exchange tokens stay).

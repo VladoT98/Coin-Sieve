@@ -1,0 +1,58 @@
+{
+ "_url": "https://api.coingecko.com/api/v3/derivatives",
+ "_status": 200,
+ "_rate_headers": {
+  "Cache-Control": "max-age=30, public, must-revalidate, s-maxage=180"
+ },
+ "sample": [
+  {
+   "market": "Binance (Futures)",
+   "symbol": "BTCUSDT",
+   "index_id": "BTC",
+   "price": "83428.06",
+   "price_percentage_change_24h": 0.5983139738722647,
+   "contract_type": "perpetual",
+   "index": 83543.69869565,
+   "basis": 0.05652775343877179,
+   "spread": 0.01,
+   "funding_rate": 0.004385,
+   "open_interest": 7866172071.97,
+   "volume_24h": 8319571394.072863,
+   "last_traded_at": 1791799289,
+   "expired_at": null
+  },
+  {
+   "market": "Binance (Futures)",
+   "symbol": "ETHUSDT",
+   "index_id": "ETH",
+   "price": "2555.57",
+   "price_percentage_change_24h": 2.2389133615279544,
+   "contract_type": "perpetual",
+   "index": 2559.65837209,
+   "basis": 0.07774154171569268,
+   "spread": 0.01,
+   "funding_rate": 0.002045,
+   "open_interest": 5996504677.6,
+   "volume_24h": 6960906671.792179,
+   "last_traded_at": 1791799289,
+   "expired_at": null
+  },
+  {
+   "market": "Bybit (Futures)",
+   "symbol": "BTCUSDT",
+   "index_id": "BTC",
+   "price": "83328.64",
+   "price_percentage_change_24h": 0.46778229269944344,
+   "contract_type": "perpetual",
+   "index": 83520.7,
+   "basis": 0.14832667841768538,
+   "spread": 0.01,
+   "funding_rate": 0.004019,
+   "open_interest": 4697582934.37,
+   "volume_24h": 3152422040.576963,
+   "last_traded_at": 1791798672,
+   "expired_at": null
+  },
+  "... 26384 more"
+ ]
+}

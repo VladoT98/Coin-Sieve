@@ -12,7 +12,36 @@
   ("passes / fails our screening criteria"); show "Data provided by CoinGecko" + link wherever its data appears.
 - Process: one phase per session; ask before deleting features, migrating/dropping data or force-pushing; at the
   end of each phase show how to test it, then commit after approval. Explain new web tools the first time.
-- Sections below describe v2/v3 (still live on main) until the v4 phases replace them.
+- Sections below describe v2/v3 (still live on main) until the v4 phases replace them. Solana tier code is deleted
+  in Phase 5 together with the old dashboard (user decision 2026-10-12: it is wired into the live site). Backups:
+  `data/backup/coinsieve-state-2026-10-12.db` (live) + `coinsieve-local-2026-10-09.db`; tag `v3-final`.
+
+## Verified API facts (v4 probes, 2026-10-12) — `scripts/probe_v4.py`, samples in `docs/api_samples/`
+- **CoinGecko Demo** (header `x-cg-demo-api-key`, same base `api.coingecko.com/api/v3`): no rate-limit headers;
+  `/key` (usage) → 401 (paid only) → we count calls ourselves. History > 365 days → 401 (error 10012).
+- `coins/markets` adds `ath_change_percentage`, `atl_*`, `roi` and `price_change_percentage_{30d,200d,1y}_in_currency`
+  when asked. Rank 250 ≈ $127M.
+- `coins/{id}?community_data=true&developer_data=true` → both **null** (AAVE) → development data comes from GitHub.
+  Has `watchlist_portfolio_users`, `sentiment_votes_up_percentage`, `market_data.total_value_locked`,
+  `mcap_to_tvl_ratio`, `market_cap_fdv_ratio`, `price_change_percentage_{14d,60d}`. `repos_url.github` can be a
+  stale repo (AAVE → aave/aave-protocol) → use the owner's recently pushed repos.
+- `coins/{id}/tickers?depth=true&order=volume_desc` → 100 per page (`Link` header for more):
+  `bid_ask_spread_percentage`, `cost_to_move_up_usd` / `cost_to_move_down_usd` (±2% depth), `converted_volume.usd`,
+  `market.identifier`; `trust_score` null. Top-volume ticker can be a small exchange (AAVE: CoinUp.io $611M) →
+  depth/spread only from a configured list of major exchanges.
+- `market_chart?days=365&interval=daily` → 366 daily `[ms, value]` points for prices / market_caps / total_volumes.
+- `derivatives` → 26k contracts, 9 MB, `index_id` = ticker SYMBOL ("BTC", "1000 PEPE"), `open_interest` +
+  `volume_24h` in USD. No coin id → symbol matching only (ambiguous) → optional metric.
+- **DefiLlama** (no key, `Cache-Control: max-age=1798`): `/protocols` 8,694 items, `gecko_id` on 2,430,
+  `parentProtocol` on 2,559. `gecko_id` sits on ONE child (Aave V2 = `aave`; V3/V4 have null) → group by
+  `parentProtocol`. `/v2/chains` 468 chains, `gecko_id` on 317. `/overview/fees?dataType=dailyFees|dailyRevenue`
+  (+ `excludeTotalDataChart*`): no `gecko_id`; `defillamaId` = `/protocols` `id` (2,751 of 2,992), chains as
+  `chain#<name>` with `protocolType: chain`; fields `total24h/7d/30d/1y`, `parentProtocol`. `/hacks` (free):
+  1,300 records `{date, name, amount, classification, technique, defillamaId, returnedFunds}`.
+- **GitHub** (token, 5,000/h, `X-RateLimit-*` headers): `/orgs/{o}/repos?sort=pushed` (`fork`, `archived`,
+  `pushed_at`, `stargazers_count`); `/stats/commit_activity` (52 weeks `{week, total, days}`) and
+  `/stats/contributors` (`{author, total, weeks}`, ~270 KB) answered 200 at once (202 = retry later).
+  `commits?since=&per_page=1` → count from `Link` rel="last"; 0 commits = `[]` without Link.
 
 ## Goal (v2)
 A Solana token screener product, aiming for revenue:
@@ -45,6 +74,14 @@ A Solana token screener product, aiming for revenue:
 - Dry-run mode by default: print to console, only post to Telegram when --post is passed. Post to the TEST channel until the user approves switching to the main channel.
 
 ## Commands
+- **v4 screener (branch `quality-score`, package `coinsieve/screener/`, DB `data/screener.db`, config `screener:`):**
+  `python sieve.py fetch [--steps universe,defillama,profiles,github,backfill] [--max-profiles N] [--max-owners N]
+  [--max-backfill N]` — universe (CoinGecko markets + category exclusions, $100M enter / $90M stay) → DefiLlama
+  (parent-aware matching) → CoinGecko profiles + tickers (weekly rotation by market cap) → GitHub owners (weekly;
+  stats still computing → retried next day) → 365-day price backfill. Every call logged in `api_calls`; responses
+  cached in `data/cache` (re-running a day is ~free). `python sieve.py budget` (calls this month + projection),
+  `python sieve.py backup [--out data/backup]` (gzipped consistent DB copy). Tables: `universe_daily`,
+  `price_daily`, `metric_values(date, cg_id, metric, value, text, source_url NOT NULL)`, `links`, `fetch_log`.
 - **v3 multi-chain (branch `multichain`, 2026-10-11):** `python sieve.py run` defaults to `--tiers coverage`: universe = CoinGecko `coins/markets` down to `coverage.scope_min_mcap_usd`; criteria = not in `coverage.exclude_categories`, mcap, 24h volume, age lower bound, `min_exchanges`, website/docs. Tokens are keyed by **CoinGecko id** (store key space `coingecko.CHAIN = "coingecko"`, URLs `#/token/<id>`); old Solana-mint members are closed once without events. The table's 7-day line comes from the same markets call (`sparkline_in_7d`; no GeckoTerminal for coverage). `python sieve.py profiles [--max N]` (CoinGecko `coins/{id}` with tickers + DexScreener info fallback for links + homepage scan + 1-year chart when age is unproven; daily, ~25 tokens/run) and `python sieve.py holders [--force]` (Solana-issued tokens only: RugCheck top 20 + Solana RPC; daily). Order on a fresh DB: `run` → `profiles` + `holders` → `run`. The website reads only from the DB/logo cache (market strip thread is the exception until Stage E). All site texts live in `coinsieve/site_text.yaml`. Lines below describe the v2 screener and are rewritten in Stage G.
 - `python sieve.py [run] [--tiers new_launches,emerging,established]` — evaluate tiers (default all), update membership, save latest metrics. Never posts.
 - `python sieve.py digest daily|weekly|alerts [--post]` — build a digest; dry run unless `--post` (TEST chat).
