@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Coin Sieve</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23fff'/%3E%3Ccircle cx='16' cy='7' r='4' fill='%23f2b33d'/%3E%3Cpath d='M5 13H27A11 11 0 0 1 5 13Z' fill='none' stroke='%23000' stroke-width='2.4' stroke-linejoin='round'/%3E%3Cpath d='M27 13h3.5' stroke='%23000' stroke-width='2.4' stroke-linecap='round'/%3E%3Cg fill='%23000'%3E%3Ccircle cx='11' cy='17' r='1.3'/%3E%3Ccircle cx='16' cy='17' r='1.3'/%3E%3Ccircle cx='21' cy='17' r='1.3'/%3E%3Ccircle cx='13.5' cy='21' r='1.3'/%3E%3Ccircle cx='18.5' cy='21' r='1.3'/%3E%3C/g%3E%3C/svg%3E">
 <style>
   :root {
     --bg: #111215; --side: #0d0e11; --panel: #16171b; --panel2: #1c1d22; --hover: #1f2026; --line: #24252b;
@@ -22,8 +23,9 @@
 
   /* sidebar */
   .side { grid-row: 1 / 3; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 10px; min-height: 0; }
-  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px; font-weight: 800; font-size: 17px; letter-spacing: .04em; white-space: nowrap; }
-  .brand .mark { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; font-size: 12px; font-weight: 900; letter-spacing: 0; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px; font-weight: 800; font-size: 17px; letter-spacing: .04em; white-space: nowrap; color: inherit; text-decoration: none; border-radius: 8px; }
+  .brand:hover .mark { transform: rotate(-8deg); } .brand:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .brand .mark { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; transition: transform .15s; }
   .nav { display: flex; flex-direction: column; gap: 2px; }
   .nav a { display: flex; align-items: center; gap: 11px; border-radius: 8px; padding: 9px 8px; color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none; }
   .nav a:hover { background: var(--hover); color: var(--text); }
@@ -283,7 +285,7 @@
 <body>
 <div class="app" id="app">
   <aside class="side">
-    <div class="brand"><div class="mark">CS</div><span>COIN SIEVE</span></div>
+    <a class="brand" id="brand" href="#/tokens" title="Coin Sieve: back to the token list"><div class="mark"><svg class="logo" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><circle cx="16" cy="7" r="4" fill="#f2b33d"/><path d="M5 13H27A11 11 0 0 1 5 13Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M27 13h3.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><g fill="currentColor"><circle cx="11" cy="17" r="1.3"/><circle cx="16" cy="17" r="1.3"/><circle cx="21" cy="17" r="1.3"/><circle cx="13.5" cy="21" r="1.3"/><circle cx="18.5" cy="21" r="1.3"/></g></svg></div><span>COIN SIEVE</span></a>
     <div class="modebadge admin-only">ADMIN MODE</div>
     <nav class="nav" id="nav"></nav>
     <div class="grow"></div>
@@ -1094,6 +1096,11 @@ function renderAll() {
 }
 
 // ---- actions ---------------------------------------------------------------------------------------------
+$("brand").onclick = (e) => {  // logo / name = homepage: the token list from the start (filters and columns kept)
+  e.preventDefault(); view = "covered"; query = ""; page = 0; selected = null; sortKey = null; sortDir = 1;
+  if (location.hash !== "#/tokens") location.hash = "#/tokens"; else { parseRoute(); hideTip(); renderAll(); }
+  window.scrollTo(0, 0);
+};
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeModal(); hideTip(); } });
 $("runBtn").onclick = async () => { try { const j = await api("/api/run", { tiers: ["coverage"] }); S.run = j.run; renderRun(); pollRun(); } catch (e) { $("runStatus").textContent = e.message; } };
 async function pollRun() { S.run = await api("/api/run"); renderRun(); if (S.run && S.run.running) setTimeout(pollRun, 3000); else load(); }
